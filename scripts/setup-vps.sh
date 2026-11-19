@@ -14,7 +14,7 @@ sudo apt-get install -y \
   libdrm2 \
   libxkbcommon0 \
   libgbm1 \
-  libasound2 \
+  libasound2t64 \
   fonts-freefont-ttf
 
 echo "Installing npm dependencies..."

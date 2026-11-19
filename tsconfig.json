@@ -5,6 +5,7 @@
     "moduleResolution": "node",
     "jsx": "react-jsx",
     "strict": true,
+    "strictNullChecks": false,
     "noEmit": true,
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "esModuleInterop": true,
