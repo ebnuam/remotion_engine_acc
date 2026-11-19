@@ -1,0 +1,31 @@
+{
+  "name": "bridge-tes-engine",
+  "version": "1.0.0",
+  "description": "Standalone 2.5D in 3D Procedural Cartoon Animation Engine for Remotion",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "remotion preview src/index.ts",
+    "render": "remotion render src/index.ts BridgeShort out/bridge_short.mp4",
+    "render:preview": "remotion render src/index.ts BridgeShort-Preview out/bridge_preview.mp4 --concurrency=4",
+    "render:linux": "remotion render src/index.ts BridgeShort out/bridge_short.mp4 --gl=angle --concurrency=4",
+    "render:swiftshader": "remotion render src/index.ts BridgeShort out/bridge_short.mp4 --gl=swiftshader --concurrency=4",
+    "still": "remotion still src/index.ts BridgeShort out/still_f60.jpg --frame=60"
+  },
+  "dependencies": {
+    "@react-three/fiber": "8.18.0",
+    "@react-three/postprocessing": "2.16.3",
+    "@remotion/cli": "4.0.543",
+    "@remotion/three": "4.0.543",
+    "@types/three": "0.161.0",
+    "postprocessing": "6.37.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.543",
+    "three": "0.161.0"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "typescript": "5.6.3"
+  }
+}

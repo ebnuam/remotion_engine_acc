@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+.npm/
+
+# Remotion & Render Outputs
+out/
+dist/
+build/
+.remotion/
+*.mp4
+*.webm
+*.png
+*.jpg
+*.jpeg
+
+# Logs & OS files
+*.log
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
