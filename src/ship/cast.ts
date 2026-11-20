@@ -12,7 +12,7 @@ import {
   INK,
 } from "../bridge/toon";
 import { Pool, Actor, Fx, SU } from "../bridge/cast";
-import { nailStateAt, NAIL_DROP_F, NAIL_SPLASH_F } from "./story";
+import { coinStateAt, steelBlockStateAt } from "./story";
 
 export { Pool, Actor, Fx };
 
@@ -75,31 +75,44 @@ const drawCaptainCap = (p: Pen, cx: number, cy: number) => {
 export const stageShip = (
   shotId: number,
   f: number,
-  camPos: THREE.Vector3
+  _camPos: THREE.Vector3
 ): ShipStage => {
   const out: ShipStage = { places: [], fx: [] };
 
-  // Only Shot 2 features the presenter on the pier/deck dropping the nail
-  if (shotId === 2) {
-    const nailState = nailStateAt(f);
-
-    // Dynamic Captain expression based on nail state
-    let expr: Expr = "smile";
-    let blink = false;
-
-    if (f < NAIL_DROP_F) {
-      // Explaining the premise
-      expr = "smile";
-      blink = (f >= 132 && f <= 135);
-    } else if (f < NAIL_SPLASH_F) {
-      // Watching the nail drop
-      expr = "nervous";
-      blink = (f >= 152 && f <= 155);
-    } else {
-      // Iron nail sank straight like a stone!
-      expr = "shock";
-      blink = (f >= 190 && f <= 193);
+  // ---- Shot 1: Sinking Coin Splash ----
+  if (shotId === 1) {
+    const cs = coinStateAt(f);
+    if (cs.splashT > 0 && cs.splashT < 1) {
+      const u = cs.splashT;
+      const splashSize = 1.6 * Math.sin(u * Math.PI);
+      out.fx.push({
+        key: `coin_splash|${Math.round(u * 20)}`,
+        cw: 800,
+        ch: 800,
+        draw: (p) => fxSplash(p, u),
+        x: cs.pos[0],
+        y: 0.3 * Math.sin(u * Math.PI),
+        z: cs.pos[2],
+        w: splashSize,
+        h: splashSize,
+        soft: false,
+      });
     }
+  }
+
+  // ---- Shot 2: Deck Presenter (Captain) ----
+  if (shotId === 2) {
+    let expr: Expr = "smile";
+    if (f < 450) {
+      expr = "neutral";
+    } else if (f < 560) {
+      expr = "smile";
+    } else {
+      expr = "grin";
+    }
+
+    // Natural periodic blinks
+    const blink = (f % 110 >= 0 && f % 110 <= 3);
 
     const captainPos = { x: 9.8, y: 3.5, z: 0.0 };
 
@@ -107,11 +120,11 @@ export const stageShip = (
       mode: "stand",
       expr,
       blink,
-      facing: -1, // Facing slightly left towards the water
-      look: f >= NAIL_DROP_F && f < NAIL_SPLASH_F + 15 ? -0.8 : -0.2, // Looking down at falling nail
+      facing: -1,
+      look: -0.2,
     };
 
-    const key = `capt|${expr}|${blink ? "b" : "o"}|${f < NAIL_DROP_F ? "hold" : "drop"}`;
+    const key = `capt_ep1|${expr}|${blink ? "b" : "o"}|${Math.floor(f / 30)}`;
 
     out.places.push({
       key,
@@ -120,11 +133,10 @@ export const stageShip = (
       z: captainPos.z,
       scale: 1.05,
       mirror: false,
-      yaw: -0.4, // Angled slightly towards the water edge
+      yaw: -0.35,
       size: [720, 1200, 1.2],
       draw: (p) => {
         bodyFront(p, CAPTAIN, fo);
-        // Add extra gold buttons & stripes
         p.dot(300, 480, 8, "#fbbf24");
         p.dot(300, 540, 8, "#fbbf24");
         p.dot(300, 600, 8, "#fbbf24");
@@ -132,10 +144,10 @@ export const stageShip = (
       },
     });
 
-    // Contact shadow blob on the wooden pier deck under feet
+    // Contact shadow blob on the pier deck
     const shadowColor = "#2d2338";
     out.fx.push({
-      key: `blob|contact|capt`,
+      key: `blob|contact|capt2`,
       cw: 128,
       ch: 128,
       draw: (p) => fxContact(p, shadowColor),
@@ -149,7 +161,7 @@ export const stageShip = (
     });
 
     out.fx.push({
-      key: `blob|tail|capt`,
+      key: `blob|tail|capt2`,
       cw: 128,
       ch: 256,
       draw: (p) => fxShadow(p, shadowColor),
@@ -161,24 +173,77 @@ export const stageShip = (
       flat: true,
       rot: 0.6,
     });
+  }
 
-    // Water Splash Effect Card when nail hits water
-    if (nailState.splashT > 0 && nailState.splashT < 1) {
-      const u = nailState.splashT;
-      const splashSize = 2.4 * Math.sin(u * Math.PI);
+  // ---- Shot 3: Steel Block Plunge Splash ----
+  if (shotId === 3) {
+    const sb = steelBlockStateAt(f);
+    if (sb.splashT > 0 && sb.splashT < 1) {
+      const u = sb.splashT;
+      const splashSize = 5.2 * Math.sin(u * Math.PI);
       out.fx.push({
-        key: `splash|${Math.round(u * 20)}`,
+        key: `steel_splash|${Math.round(u * 20)}`,
         cw: 800,
         ch: 800,
         draw: (p) => fxSplash(p, u),
-        x: nailState.pos[0],
-        y: 0.45 * Math.sin(u * Math.PI), // Sits right on the sea surface y=0
-        z: nailState.pos[2],
+        x: sb.pos[0],
+        y: 0.6 * Math.sin(u * Math.PI),
+        z: sb.pos[2],
         w: splashSize,
         h: splashSize,
         soft: false,
       });
     }
+  }
+
+  // ---- Shot 5: Heroic Outro (Captain Waving) ----
+  if (shotId === 5) {
+    const wave = Math.sin((f - 1650) * 0.35);
+    const blink = (f % 95 >= 0 && f % 95 <= 3);
+    const captainPos = { x: 8.5, y: 3.5, z: -2.0 };
+
+    const fo: FrontOpts = {
+      mode: "stand",
+      expr: "laugh",
+      blink,
+      facing: -1,
+      wave,
+    };
+
+    const key = `capt_outro|${Math.round(wave * 5)}|${blink ? "b" : "o"}`;
+
+    out.places.push({
+      key,
+      x: captainPos.x,
+      y: captainPos.y,
+      z: captainPos.z,
+      scale: 1.1,
+      mirror: false,
+      yaw: -0.4,
+      size: [720, 1200, 1.2],
+      draw: (p) => {
+        bodyFront(p, CAPTAIN, fo);
+        p.dot(300, 480, 8, "#fbbf24");
+        p.dot(300, 540, 8, "#fbbf24");
+        p.dot(300, 600, 8, "#fbbf24");
+        drawCaptainCap(p, 300, 260);
+      },
+    });
+
+    const shadowColor = "#2d2338";
+    out.fx.push({
+      key: `blob|contact|capt5`,
+      cw: 128,
+      ch: 128,
+      draw: (p) => fxContact(p, shadowColor),
+      x: captainPos.x - 0.05,
+      y: captainPos.y + 0.02,
+      z: captainPos.z - 0.05,
+      w: 0.85,
+      h: 0.65,
+      flat: true,
+      rot: 0,
+    });
   }
 
   return out;

@@ -64,7 +64,6 @@ export class ShipModel {
     const matHullRed = getMat("shipHullRed", () => ({ color: "#991b1b" })); // Antifouling red bottom
     const matHullDark = getMat("shipHullDark", () => ({ color: "#1e293b" })); // Deep slate topsides
     const matStripe = getMat("shipStripe", () => ({ color: "#f8fafc" })); // White waterline stripe
-    const matDeck = getMat("shipDeck", () => ({ color: "#334155" })); // Dark steel deck
     const matSuper = getMat("shipSuper", () => ({ color: "#f1f5f9" })); // White bridge superstructure
     const matWindow = getMat("shipWindow", () => ({ color: "#090d16" })); // Tinted bridge windows
     const matFunnel = getMat("shipFunnel", () => ({ color: "#dc2626" })); // Red funnel
@@ -89,7 +88,6 @@ export class ShipModel {
       const z0 = -12 - i * 1.5;
       const z1 = z0 - 1.5;
       const w0 = 6 * (1 - i / 7);
-      const w1 = 6 * (1 - (i + 1) / 7);
       hullRedGeos.push(boxGeo(V(-w0, -4 + i * 0.25, z1), V(w0, 0, z0)));
     }
     // Bulbous bow (spherical / cylindrical protruding nose at y=-2.5, z=-20..-23)
@@ -152,8 +150,7 @@ export class ShipModel {
     hullDarkMesh.receiveShadow = true;
     R.add(hullDarkMesh);
 
-    // ---- 4. Cutaway Outer Panel (Shot 3 toggle/fade) ----
-    // This panel covers the port side cutaway region (x = -6.1..-5.6, z = -4..14, y = 0.4..4.4)
+    // ---- 4. Cutaway Outer Panel (Shot 3 & 4 toggle/fade) ----
     const cutawayGeo = boxGeo(V(-6.12, 0.4, -4), V(-5.58, 4.4, 14));
     this.cutawayPanel = new THREE.Mesh(cutawayGeo, matHullDark);
     this.cutawayPanel.castShadow = true;
@@ -174,12 +171,11 @@ export class ShipModel {
     ribGeos.push(boxGeo(V(-5.5, -3.2, -4.5), V(5.5, 3.8, -4.1)));
     ribGeos.push(boxGeo(V(-5.5, -3.2, 14.1), V(5.5, 3.8, 14.5)));
 
-    // Transverse structural web frames / ribs every 3 meters
-    for (let z = -2; z <= 12; z += 3.5) {
+    // Transverse structural web frames with clean spacing
+    for (let z = -2; z <= 12; z += 5.0) {
       // Bottom frame
       ribGeos.push(boxGeo(V(-5.4, -3.1, z - 0.2), V(5.4, -2.4, z + 0.2)));
-      // Side vertical frames
-      ribGeos.push(boxGeo(V(-5.4, -2.4, z - 0.2), V(-4.8, 3.8, z + 0.2)));
+      // Side vertical frames (lowered so camera has clear sight line)
       ribGeos.push(boxGeo(V(4.8, -2.4, z - 0.2), V(5.4, 3.8, z + 0.2)));
       // Deck transverse beam
       ribGeos.push(boxGeo(V(-5.4, 3.4, z - 0.2), V(5.4, 3.8, z + 0.2)));
@@ -195,12 +191,12 @@ export class ShipModel {
     );
     interiorR.add(wlIndicator);
 
-    // Glowing hollow air cavity representation (subtle translucent air volume)
+    // Translucent glowing air cavity (demonstrates massive empty volume)
     const airVolumeGeo = boxGeo(V(-5.2, -3.1, -4.0), V(5.2, 3.7, 14.0));
     const matAir = new THREE.MeshBasicMaterial({
       color: "#e0f2fe",
       transparent: true,
-      opacity: 0.12,
+      opacity: 0.14,
       depthWrite: false,
     });
     const airMesh = new THREE.Mesh(airVolumeGeo, matAir);
@@ -212,7 +208,6 @@ export class ShipModel {
     const cntMats = [matBlue, matGreen, matOrange, matYellow, matRed];
     const cntGeosByMat: THREE.BufferGeometry[][] = [[], [], [], [], []];
 
-    // Grid of containers: 3 rows across x, length along z
     const xCols = [-3.6, 0.0, 3.6];
     const zBays = [-9.5, -3.2, 3.2, 9.5, 15.8];
 
@@ -226,7 +221,6 @@ export class ShipModel {
       const zc = zBays[b];
       for (let c = 0; c < xCols.length; c++) {
         const xc = xCols[c];
-        // Stack 2 to 3 tiers high
         const tiers = 2 + Math.floor(prng() * 2);
         for (let t = 0; t < tiers; t++) {
           const yc = 4.1 + t * 2.5;
@@ -254,11 +248,8 @@ export class ShipModel {
 
     // ---- 7. Superstructure & Bridge (Aft deckhouse: z = 22 to 30) ----
     const superGeos: THREE.BufferGeometry[] = [];
-    // Main deckhouse block (Tier 1 & 2: y = 4.1 to 10.5)
     superGeos.push(boxGeo(V(-4.8, 4.1, 23), V(4.8, 10.5, 29.5)));
-    // Navigation Bridge Wheelhouse (Tier 3: y = 10.5 to 13.5, with wings x = -6.4 to 6.4)
     superGeos.push(boxGeo(V(-6.4, 10.5, 23.5), V(6.4, 13.5, 27.5)));
-    // Roof mast pedestal
     superGeos.push(boxGeo(V(-1.2, 13.5, 24.5), V(1.2, 14.8, 26.5)));
 
     const superMesh = new THREE.Mesh(mergeGeometries(superGeos, false), matSuper);
@@ -266,17 +257,15 @@ export class ShipModel {
     superMesh.receiveShadow = true;
     R.add(superMesh);
 
-    // Bridge Windows (Black ribbon windows along wheelhouse)
+    // Bridge Windows
     const winGeos: THREE.BufferGeometry[] = [];
-    // Front windows (facing bow / -z)
     winGeos.push(boxGeo(V(-6.2, 11.4, 23.42), V(6.2, 12.8, 23.5)));
-    // Port & starboard side windows
     winGeos.push(boxGeo(V(-6.42, 11.4, 23.6), V(-6.38, 12.8, 27.2)));
     winGeos.push(boxGeo(V(6.38, 11.4, 23.6), V(6.42, 12.8, 27.2)));
     const winMesh = new THREE.Mesh(mergeGeometries(winGeos, false), matWindow);
     R.add(winMesh);
 
-    // Funnel / Exhaust Smokestack (Red cylinder with black angled top)
+    // Funnel / Exhaust Smokestack
     const funnelGeos: THREE.BufferGeometry[] = [];
     const funnelCyl = new THREE.CylinderGeometry(1.2, 1.4, 4.5, 16);
     funnelCyl.translate(0, 15.2, 28.2);
@@ -301,17 +290,18 @@ export class ShipModel {
     const mastMesh = new THREE.Mesh(mergeGeometries(mastGeos, false), matSteel);
     R.add(mastMesh);
 
-    // ---- 8. 3D Force Arrows (Shot 3) ----
-    // Gravity Force Arrow (Red, pointing DOWN)
-    this.buildGravityArrow(matRed);
+    // ---- 8. 3D Force Arrows (Enlarged & Powerful for Shot 4) ----
+    const matRedArrow = getMat("arrowRed", () => ({ color: "#ef4444" }));
+    const matGreenArrow = getMat("arrowGreen", () => ({ color: "#10b981" }));
+
+    this.buildGravityArrow(matRedArrow);
     R.add(this.gravityArrow);
 
-    // Buoyant Force Arrow (Green, pointing UP)
-    this.buildBuoyancyArrow(matGreen);
+    this.buildBuoyancyArrow(matGreenArrow);
     R.add(this.buoyancyArrow);
 
-    // ---- 9. Bow Wake Foam Mesh (Shot 1) ----
-    const wakeGeo = new THREE.RingGeometry(2.0, 7.5, 32, 1, 0, Math.PI);
+    // ---- 9. Bow Wake Foam Mesh (Shot 1 & 5) ----
+    const wakeGeo = new THREE.RingGeometry(2.0, 8.5, 32, 1, 0, Math.PI);
     wakeGeo.rotateX(-Math.PI / 2);
     wakeGeo.translate(0, 0.05, -20);
     const matWake = new THREE.MeshBasicMaterial({
@@ -327,45 +317,45 @@ export class ShipModel {
 
   private buildGravityArrow(mat: THREE.Material) {
     const G = this.gravityArrow;
-    // Shaft: Cylinder pointing down
-    const shaft = new THREE.CylinderGeometry(0.35, 0.35, 2.8, 16);
-    shaft.translate(0, -1.4, 0);
+    // Shaft: Cylinder pointing down (length 4.0m)
+    const shaft = new THREE.CylinderGeometry(0.48, 0.48, 3.8, 16);
+    shaft.translate(0, -1.9, 0);
     // Head: Cone pointing down
-    const head = new THREE.ConeGeometry(0.85, 1.4, 16);
+    const head = new THREE.ConeGeometry(1.2, 1.8, 16);
     head.rotateX(Math.PI);
-    head.translate(0, -3.5, 0);
+    head.translate(0, -4.7, 0);
 
     const geo = mergeGeometries([shaft, head], false);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;
     G.add(mesh);
     // Base position at center of gravity
-    G.position.set(0, 3.6, 4.5);
-    G.scale.set(0.001, 0.001, 0.001); // starts invisible
+    G.position.set(0, 3.8, 4.5);
+    G.scale.set(0.001, 0.001, 0.001);
   }
 
   private buildBuoyancyArrow(mat: THREE.Material) {
     const B = this.buoyancyArrow;
-    // Shaft: Cylinder pointing up (larger, more powerful!)
-    const shaft = new THREE.CylinderGeometry(0.45, 0.45, 4.2, 16);
-    shaft.translate(0, 2.1, 0);
+    // Shaft: Cylinder pointing up (larger, more powerful! length 5.5m)
+    const shaft = new THREE.CylinderGeometry(0.58, 0.58, 5.2, 16);
+    shaft.translate(0, 2.6, 0);
     // Head: Cone pointing up
-    const head = new THREE.ConeGeometry(1.05, 1.8, 16);
-    head.translate(0, 5.1, 0);
+    const head = new THREE.ConeGeometry(1.45, 2.2, 16);
+    head.translate(0, 6.3, 0);
 
     const geo = mergeGeometries([shaft, head], false);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;
     B.add(mesh);
     // Base position at center of buoyancy (in submerged hull)
-    B.position.set(0, -2.0, 4.5);
-    B.scale.set(0.001, 0.001, 0.001); // starts invisible
+    B.position.set(0, -2.2, 4.5);
+    B.scale.set(0.001, 0.001, 0.001);
   }
 
   update(cutawayProgress: number, gravityScale: number, buoyancyScale: number, time: number) {
-    // Cutaway panel drops down / disappears
+    // Cutaway panel drops down / reveals interior
     if (cutawayProgress > 0.01) {
-      this.cutawayPanel.position.y = -cutawayProgress * 8.0;
+      this.cutawayPanel.position.y = -cutawayProgress * 8.5;
       this.cutawayPanel.visible = cutawayProgress < 0.98;
       this.cutawayInterior.visible = true;
     } else {
@@ -377,27 +367,25 @@ export class ShipModel {
     // Force arrows scaling
     if (gravityScale > 0.01) {
       this.gravityArrow.visible = true;
-      this.gravityArrow.scale.set(
-        gravityScale,
-        gravityScale,
-        gravityScale
-      );
+      this.gravityArrow.scale.set(gravityScale, gravityScale, gravityScale);
     } else {
       this.gravityArrow.visible = false;
     }
 
     if (buoyancyScale > 0.01) {
       this.buoyancyArrow.visible = true;
+      // Slight buoyant breathing pulse for visual dynamism
+      const pulse = 1.0 + 0.04 * Math.sin(time * 3.0);
       this.buoyancyArrow.scale.set(
-        buoyancyScale,
-        buoyancyScale,
-        buoyancyScale
+        buoyancyScale * pulse,
+        buoyancyScale * pulse,
+        buoyancyScale * pulse
       );
     } else {
       this.buoyancyArrow.visible = false;
     }
 
-    // Bow wake pulsing / expansion
+    // Bow wake pulsing
     const wakePulse = 1.0 + 0.15 * Math.sin(time * 3.5);
     this.bowWake.scale.set(wakePulse, 1, wakePulse);
   }
@@ -411,15 +399,15 @@ export class PierModel {
 
   constructor() {
     const R = this.root;
-    const matWood = getMat("pierWood", () => ({ color: "#78350f" })); // Dark rich timber
-    const matPiling = getMat("pierPiling", () => ({ color: "#451a03" })); // Wet dark timber pilings
-    const matBollard = getMat("pierBollard", () => ({ color: "#1e293b" }), true); // Cast iron bollard
+    const matWood = getMat("pierWood", () => ({ color: "#78350f" }));
+    const matPiling = getMat("pierPiling", () => ({ color: "#451a03" }));
+    const matBollard = getMat("pierBollard", () => ({ color: "#1e293b" }), true);
     const matRail = getMat("pierRail", () => ({ color: "#94a3b8" }), true);
 
     const timberGeos: THREE.BufferGeometry[] = [];
     const pilingGeos: THREE.BufferGeometry[] = [];
 
-    // Wooden deck at y = 3.4 (x = 8 to 16, z = -12 to 12)
+    // Wooden deck at y = 3.4 (x = 7.5 to 16, z = -12 to 12)
     timberGeos.push(boxGeo(V(7.5, 3.2, -12), V(16, 3.5, 12)));
 
     // Vertical pilings supporting deck
@@ -453,7 +441,7 @@ export class PierModel {
     bollardsMesh.castShadow = true;
     R.add(bollardsMesh);
 
-    // Edge safety railing along z = -10 to -2 and 4 to 10
+    // Edge safety railing along pier back
     const railGeos: THREE.BufferGeometry[] = [];
     const railTop = new THREE.BoxGeometry(0.12, 0.12, 20);
     railTop.translate(15.8, 4.6, 0);
@@ -470,31 +458,26 @@ export class PierModel {
 }
 
 /**
- * Creates Small Iron Nail / Heavy Metal Block for Shot 2
+ * Creates Small Coin Model for Shot 1
  */
-export class IronNailModel {
+export class CoinModel {
   root = new THREE.Group();
   mesh: THREE.Mesh;
 
   constructor() {
-    const matIron = getMat(
-      "nailIron",
+    const matCoin = getMat(
+      "coinGold",
       () => ({
-        color: "#334155",
-        specular: "#94a3b8",
-        shininess: 60,
+        color: "#f59e0b",
+        specular: "#fef08a",
+        shininess: 90,
       }),
       true
     );
 
-    // A chunky iron cube / spike nail
-    const head = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 12);
-    head.translate(0, 0.18, 0);
-    const shaft = new THREE.CylinderGeometry(0.06, 0.02, 0.38, 10);
-    shaft.translate(0, 0, 0);
-
-    const geo = mergeGeometries([head, shaft], false);
-    this.mesh = new THREE.Mesh(geo, matIron);
+    // Golden coin cylinder
+    const geo = new THREE.CylinderGeometry(0.24, 0.24, 0.05, 24);
+    this.mesh = new THREE.Mesh(geo, matCoin);
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = true;
     this.root.add(this.mesh);
@@ -504,8 +487,40 @@ export class IronNailModel {
     this.root.position.set(...pos);
     this.root.visible = visible;
     if (visible) {
-      this.mesh.rotation.x = rot * 4;
-      this.mesh.rotation.z = rot * 2;
+      this.mesh.rotation.x = rot * 3;
+      this.mesh.rotation.y = rot * 2;
     }
+  }
+}
+
+/**
+ * Creates Solid Steel Block for Shot 3
+ */
+export class SolidSteelBlockModel {
+  root = new THREE.Group();
+  mesh: THREE.Mesh;
+
+  constructor() {
+    const matSteel = getMat(
+      "heavySteelBlock",
+      () => ({
+        color: "#334155",
+        specular: "#94a3b8",
+        shininess: 50,
+      }),
+      true
+    );
+
+    // Heavy 3.4m steel cube
+    const geo = new THREE.BoxGeometry(3.4, 3.4, 3.4);
+    this.mesh = new THREE.Mesh(geo, matSteel);
+    this.mesh.castShadow = true;
+    this.mesh.receiveShadow = true;
+    this.root.add(this.mesh);
+  }
+
+  update(pos: V3, visible: boolean) {
+    this.root.position.set(...pos);
+    this.root.visible = visible;
   }
 }

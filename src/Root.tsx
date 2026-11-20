@@ -1,7 +1,7 @@
 import React from "react";
 import { Composition } from "remotion";
 import { BridgeShort, BRIDGE_FRAMES } from "./bridge/Bridge";
-import { ShipShort, SHIP_FRAMES } from "./ship/ShipShort";
+import { ShipShort, SHIP_EP1_FRAMES } from "./ship/ShipShort";
 
 export const Root: React.FC = () => {
   return (
@@ -26,21 +26,21 @@ export const Root: React.FC = () => {
         height={960}
       />
 
-      {/* 3. Ship Proof Master Composition (1080 x 1920 @ 30 FPS, 360 frames = 12s) */}
+      {/* 3. Ship Episode 1 Master Composition (1080 x 1920 @ 30 FPS, 2010 frames = 67s) */}
       <Composition
-        id="ShipProof"
+        id="ShipEp1"
         component={ShipShort}
-        durationInFrames={SHIP_FRAMES}
+        durationInFrames={SHIP_EP1_FRAMES}
         fps={30}
         width={1080}
         height={1920}
       />
 
-      {/* 4. Ship Proof Fast Preview Draft (540 x 960 @ 30 FPS, 360 frames = 12s) */}
+      {/* 4. Ship Episode 1 Fast Preview Draft (540 x 960 @ 30 FPS, 2010 frames = 67s) */}
       <Composition
-        id="ShipProof-Preview"
+        id="ShipEp1-Preview"
         component={ShipShort}
-        durationInFrames={SHIP_FRAMES}
+        durationInFrames={SHIP_EP1_FRAMES}
         fps={30}
         width={540}
         height={960}

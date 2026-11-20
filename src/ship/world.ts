@@ -1,5 +1,10 @@
 import * as THREE from "three";
-import { ShipModel, PierModel, IronNailModel, V } from "./build";
+import {
+  ShipModel,
+  PierModel,
+  CoinModel,
+  SolidSteelBlockModel,
+} from "./build";
 import { waterNear, waterFar, cloudHD } from "../bridge/paint";
 import { LIGHTS, LOOK } from "../bridge/lights";
 import { TONE, CHAR, LFB, untone } from "../bridge/shade";
@@ -8,10 +13,9 @@ import { Pool, Actor, Fx, stageShip } from "./cast";
 import {
   FPS,
   camAt,
-  nailStateAt,
-  cutawayStateAt,
-  V3,
-  smooth,
+  coinStateAt,
+  steelBlockStateAt,
+  ep1AnimationStateAt,
 } from "./story";
 
 const WATER_DECL = `#include <common>
@@ -107,7 +111,8 @@ export class ShipWorld {
 
   public ship: ShipModel;
   public pier: PierModel;
-  public nail: IronNailModel;
+  public coin: CoinModel;
+  public steelBlock: SolidSteelBlockModel;
 
   private lookTarget = new THREE.Vector3();
 
@@ -224,7 +229,6 @@ export class ShipWorld {
         );
     };
     waterM.customProgramCacheKey = () => "shipSea1";
-    // Massive ocean surface at y = 0
     const seaMesh = new THREE.Mesh(
       quadUp(-1200, 1200, -1200, 1200, 1, 1, 0),
       waterM
@@ -239,8 +243,11 @@ export class ShipWorld {
     this.pier = new PierModel();
     R.add(this.pier.root);
 
-    this.nail = new IronNailModel();
-    R.add(this.nail.root);
+    this.coin = new CoinModel();
+    R.add(this.coin.root);
+
+    this.steelBlock = new SolidSteelBlockModel();
+    R.add(this.steelBlock.root);
   }
 
   private actor(i: number) {
@@ -289,7 +296,6 @@ export class ShipWorld {
     this.sun.color.set(L.sunCol);
     this.sun.intensity = L.sunI;
 
-    // Sun directional vector (sun azimuth & elevation)
     const az = THREE.MathUtils.degToRad(L.az);
     const el = THREE.MathUtils.degToRad(L.el);
     const sunDir = new THREE.Vector3(
@@ -302,7 +308,7 @@ export class ShipWorld {
     this.sun.target.position.copy(this.lookTarget);
 
     const sc = this.sun.shadow.camera;
-    const Rr = 35;
+    const Rr = 40;
     sc.left = -Rr;
     sc.right = Rr;
     sc.top = Rr;
@@ -360,44 +366,72 @@ export class ShipWorld {
     W.wTime.value = t;
 
     // ---- 5. Ship Buoyancy & Wave Motion ----
-    // Gentle realistic ocean pitch and roll
     const shipPitch = 0.005 * Math.sin(t * 1.6);
     const shipRoll = 0.008 * Math.cos(t * 1.2);
     const shipHeave = 0.08 * Math.sin(t * 2.0);
 
+    // Animation state
+    const anim = ep1AnimationStateAt(f);
+
     // ---- 6. Shot-Specific Logic ----
     if (shotId === 1) {
-      // Shot 1: Bow Push
+      // Shot 1: Wide Ship 3/4 + Coin Drop
       this.pier.root.visible = false;
-      this.nail.root.visible = false;
+      this.steelBlock.root.visible = false;
+
       this.ship.root.position.set(0, shipHeave, 0);
       this.ship.root.rotation.set(shipPitch, 0, shipRoll);
       this.ship.update(0, 0, 0, t);
+
+      // Coin drop update
+      const cs = coinStateAt(f);
+      this.coin.update(cs.pos, cs.visible, cs.rot);
     } else if (shotId === 2) {
-      // Shot 2: Deck Nail Drop
+      // Shot 2: Deck Presenter (Captain)
       this.pier.root.visible = true;
-      // Background ship visible to the left giving scale & depth
+      this.coin.root.visible = false;
+      this.steelBlock.root.visible = false;
+
+      // Ship visible in background for scale contrast
       this.ship.root.position.set(-18, shipHeave - 0.2, -6);
       this.ship.root.rotation.set(shipPitch, 0.35, shipRoll);
       this.ship.update(0, 0, 0, t);
-
-      // Nail drop animation
-      const ns = nailStateAt(f);
-      this.nail.update(ns.pos, ns.visible, t);
-    } else {
-      // Shot 3: Hull Cutaway & Archimedes Force Arrows
+    } else if (shotId === 3) {
+      // Shot 3: Solid Steel Block vs Hollow Hull Cavern
       this.pier.root.visible = false;
-      this.nail.root.visible = false;
+      this.coin.root.visible = false;
+
       this.ship.root.position.set(0, shipHeave, 0);
       this.ship.root.rotation.set(shipPitch, 0, shipRoll);
+      this.ship.update(anim.cutawayProgress, 0, 0, t);
 
-      const cs = cutawayStateAt(f);
+      const sb = steelBlockStateAt(f);
+      this.steelBlock.update(sb.pos, sb.visible);
+    } else if (shotId === 4) {
+      // Shot 4: Archimedes Buoyant Force Dynamics
+      this.pier.root.visible = false;
+      this.coin.root.visible = false;
+      this.steelBlock.root.visible = false;
+
+      this.ship.root.position.set(0, shipHeave, 0);
+      this.ship.root.rotation.set(shipPitch, 0, shipRoll);
       this.ship.update(
-        cs.cutawayProgress,
-        cs.gravityScale,
-        cs.buoyancyScale,
+        anim.cutawayProgress,
+        anim.gravityScale,
+        anim.buoyancyScale,
         t
       );
+    } else {
+      // Shot 5: Heroic Outro (Sailing into distance)
+      this.pier.root.visible = true;
+      this.coin.root.visible = false;
+      this.steelBlock.root.visible = false;
+
+      // Ship sails forward along -z
+      const sailForward = -((f - 1650) / FPS) * 1.5;
+      this.ship.root.position.set(0, shipHeave, sailForward);
+      this.ship.root.rotation.set(shipPitch, 0, shipRoll);
+      this.ship.update(0, 0, 0, t);
     }
 
     // ---- 7. 2.5D Characters & FX Sprites ----

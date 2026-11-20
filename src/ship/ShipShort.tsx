@@ -2,7 +2,9 @@ import React, { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import {
   AbsoluteFill,
+  Audio,
   getInputProps,
+  staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
@@ -20,8 +22,9 @@ import { InkPass, noInkFallback } from "../bridge/ink";
 import { LensBlur, GrainEffect } from "../bridge/lensblur";
 import { GradeEffect, GRADES, GRADE_STRENGTH, gradeFor } from "../bridge/grade";
 import { TOTAL, layersAt, dofAt } from "./story";
+import { SubtitleOverlay } from "./subtitles";
 
-export const SHIP_FRAMES = TOTAL;
+export const SHIP_EP1_FRAMES = TOTAL; // 2010 frames = 67.0 seconds @ 30 FPS
 
 type PostToggles = {
   ink: boolean;
@@ -168,9 +171,16 @@ export const ShipShort: React.FC = () => {
 
   return (
     <AbsoluteFill style={{ background: "#b8d0ec" }}>
-      {layersAt(f).map((l, i) => (
+      {/* 1. Voiceover Audio Track */}
+      <Audio src={staticFile("vo_ship_ep1.mp3")} />
+
+      {/* 2. 3D World Scene per Shot */}
+      {layersAt(f).map((l) => (
         <ShotView key={l.id} id={l.id} alpha={l.alpha} />
       ))}
+
+      {/* 3. Subtitle Overlay in 9:16 Safe Zone */}
+      <SubtitleOverlay frame={f} />
     </AbsoluteFill>
   );
 };
