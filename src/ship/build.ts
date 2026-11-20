@@ -268,15 +268,15 @@ export class ShipModel {
     R.add(mastMesh);
 
     // ---- 8. 3D Force Arrows (Shot 4: 1 Red Arrow Down + 3 Green Arrows Up) ----
-    const matRedArrow = getMat("arrowRedV2", () => ({
+    const matRedArrow = getMat("arrowRedV3", () => ({
       color: "#ef4444",
-      emissive: "#991b1b",
-      emissiveIntensity: 0.3,
+      emissive: "#ef4444",
+      emissiveIntensity: 0.65,
     }));
-    const matGreenArrow = getMat("arrowGreenV2", () => ({
-      color: "#10b981",
-      emissive: "#065f46",
-      emissiveIntensity: 0.3,
+    const matGreenArrow = getMat("arrowGreenV3", () => ({
+      color: "#22c55e",
+      emissive: "#22c55e",
+      emissiveIntensity: 0.65,
     }));
 
     this.buildGravityArrow(matRedArrow);
@@ -302,50 +302,50 @@ export class ShipModel {
 
   private buildGravityArrow(mat: THREE.Material) {
     const G = this.gravityArrow;
-    // Shaft: Cylinder pointing down (length 3.8m)
-    const shaft = new THREE.CylinderGeometry(0.72, 0.72, 3.8, 16);
-    shaft.translate(0, -1.9, 0);
-    // Head: Cone pointing down (length 2.2m)
-    const head = new THREE.ConeGeometry(1.8, 2.2, 16);
+    // Large prominent downward arrow proportional to full 54m vessel
+    // Shaft: Cylinder pointing down (length 5.2m)
+    const shaft = new THREE.CylinderGeometry(1.2, 1.2, 5.2, 16);
+    shaft.translate(0, -2.6, 0);
+    // Head: Cone pointing down (length 3.2m)
+    const head = new THREE.ConeGeometry(2.6, 3.2, 16);
     head.rotateX(Math.PI);
-    head.translate(0, -4.9, 0);
+    head.translate(0, -6.8, 0);
 
     const geo = mergeGeometries([shaft, head], false);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;
     G.add(mesh);
-    // Base position centered above ship deck on visible port broadside edge (x = -6.2, z = 5.0)
-    // Shaft starts at y = 8.5, tip reaches down to y = 8.5 - 6.0 = 2.5
-    G.position.set(-6.2, 8.5, 5.0);
+    // Positioned centered at z=5.0 on visible port side (x=-6.4)
+    // Base at y=13.0, tip reaches down to y=4.6 (pressing on cargo container deck)
+    G.position.set(-6.6, 13.0, 5.0);
     G.scale.set(0.001, 0.001, 0.001);
   }
 
   private buildBuoyancyArrows(mat: THREE.Material) {
     const B = this.buoyancyArrows;
 
-    // 3 Large Green Arrows distributed across 9:16 portrait horizontal FOV:
-    // z = 2.2 (left), z = 5.0 (center), z = 7.8 (right)
-    const zPositions = [2.2, 5.0, 7.8];
+    // 3 Large Green Arrows spaced along the submerged 54m hull:
+    // z = -8.0 (forward hold), z = 5.0 (midships), z = 18.0 (aft hold)
+    const zPositions = [-8.0, 5.0, 18.0];
 
     for (let i = 0; i < zPositions.length; i++) {
       const z = zPositions[i];
       const arrowGroup = new THREE.Group();
 
-      // Shaft: Cylinder pointing up (length 3.8m)
-      const shaft = new THREE.CylinderGeometry(0.72, 0.72, 3.8, 16);
-      shaft.translate(0, 1.9, 0);
-      // Head: Cone pointing up (length 2.2m)
-      const head = new THREE.ConeGeometry(1.8, 2.2, 16);
-      head.translate(0, 4.9, 0);
+      // Shaft: Cylinder pointing up (length 5.5m)
+      const shaft = new THREE.CylinderGeometry(1.2, 1.2, 5.5, 16);
+      shaft.translate(0, 2.75, 0);
+      // Head: Cone pointing up (length 3.2m)
+      const head = new THREE.ConeGeometry(2.6, 3.2, 16);
+      head.translate(0, 7.1, 0);
 
       const geo = mergeGeometries([shaft, head], false);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.castShadow = true;
       arrowGroup.add(mesh);
 
-      // Base position underwater at y = -7.4, tip reaches up to y = -7.4 + 6.0 = -1.4
-      // Pushes directly against the ship's keel!
-      arrowGroup.position.set(-6.2, -7.4, z);
+      // Base at y=-12.5, tip reaches up to y=-3.8 (pushing right against the ship keel)
+      arrowGroup.position.set(-6.6, -12.5, z);
       B.add(arrowGroup);
     }
 
@@ -570,11 +570,10 @@ export class UnderwaterSectionModel {
   constructor() {
     const R = this.root;
 
-    // 1. Deep ocean backdrop plane below y=0 (y: -16 to 0, width: 80m)
-    const oceanGeo = new THREE.PlaneGeometry(80, 16);
-    oceanGeo.translate(0, -8, 0);
+    // 1. Deep ocean backdrop plane below y=0 (y: -70 to 0, width: 260m)
+    const oceanGeo = new THREE.PlaneGeometry(260, 70);
+    oceanGeo.translate(0, -35, 0);
 
-    // Cel-shaded deep oceanic cyan-blue
     const matOcean = new THREE.MeshBasicMaterial({
       color: "#0284c7",
       transparent: true,
@@ -586,7 +585,7 @@ export class UnderwaterSectionModel {
     R.add(oceanMesh);
 
     // 2. Crisp, sparkling waterline beam along y=0
-    const beamGeo = new THREE.BoxGeometry(80, 0.22, 0.22);
+    const beamGeo = new THREE.BoxGeometry(260, 0.45, 0.45);
     const matBeam = new THREE.MeshBasicMaterial({
       color: "#e0f2fe",
       transparent: true,
@@ -594,5 +593,131 @@ export class UnderwaterSectionModel {
     });
     this.waterlineBeam = new THREE.Mesh(beamGeo, matBeam);
     R.add(this.waterlineBeam);
+  }
+}
+
+/**
+ * Creates Floating Sea Navigational Buoys for 3D Foreground/Midground Parallax
+ */
+export class BuoyModel {
+  root = new THREE.Group();
+  beacon: THREE.Mesh;
+  foam: THREE.Mesh;
+  basePos: V3 = [0, 0, 0];
+  phase = 0;
+
+  constructor(bodyColor = "#f59e0b", topColor = "#dc2626", phase = 0) {
+    this.phase = phase;
+    const R = this.root;
+
+    const matBody = getMat("buoyBody_" + bodyColor, () => ({ color: bodyColor }), true);
+    const matStripe = getMat("buoyStripe", () => ({ color: "#f8fafc" }));
+    const matTop = getMat("buoyTop_" + topColor, () => ({ color: topColor }));
+    const matCage = getMat("buoyCage", () => ({ color: "#334155" }), true);
+
+    const buoyGeos: THREE.BufferGeometry[] = [];
+    // Conical floating tower (height 4.2m)
+    const tower = new THREE.CylinderGeometry(0.55, 1.3, 3.8, 16);
+    tower.translate(0, 1.9, 0);
+    buoyGeos.push(tower);
+    const bodyMesh = new THREE.Mesh(mergeGeometries(buoyGeos, false), matBody);
+    bodyMesh.castShadow = true;
+    R.add(bodyMesh);
+
+    // White reflective band
+    const stripeGeo = new THREE.CylinderGeometry(0.85, 1.15, 0.9, 16);
+    stripeGeo.translate(0, 1.95, 0);
+    const stripeMesh = new THREE.Mesh(stripeGeo, matStripe);
+    R.add(stripeMesh);
+
+    // Top navigational cross mark
+    const topGeos: THREE.BufferGeometry[] = [];
+    const mast = new THREE.CylinderGeometry(0.08, 0.1, 1.8, 8);
+    mast.translate(0, 4.3, 0);
+    topGeos.push(mast);
+    const crossBar = new THREE.BoxGeometry(1.2, 0.14, 0.14);
+    crossBar.translate(0, 4.9, 0);
+    topGeos.push(crossBar);
+    const topMesh = new THREE.Mesh(mergeGeometries(topGeos, false), matTop);
+    R.add(topMesh);
+
+    // Glowing yellow beacon light
+    const matBeacon = new THREE.MeshBasicMaterial({ color: "#fef08a" });
+    this.beacon = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), matBeacon);
+    this.beacon.position.set(0, 3.9, 0);
+    R.add(this.beacon);
+
+    // Floating water foam ring around buoy base
+    const foamGeo = new THREE.RingGeometry(1.2, 3.2, 24);
+    foamGeo.rotateX(-Math.PI / 2);
+    foamGeo.translate(0, 0.04, 0);
+    const matFoam = new THREE.MeshBasicMaterial({
+      color: "#ffffff",
+      transparent: true,
+      opacity: 0.7,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    this.foam = new THREE.Mesh(foamGeo, matFoam);
+    R.add(this.foam);
+  }
+
+  setPos(x: number, y: number, z: number) {
+    this.basePos = [x, y, z];
+    this.root.position.set(x, y, z);
+  }
+
+  update(time: number) {
+    const heave = 0.14 * Math.sin(time * 2.6 + this.phase);
+    const roll = 0.08 * Math.cos(time * 1.8 + this.phase);
+    const pitch = 0.06 * Math.sin(time * 2.1 + this.phase);
+
+    this.root.position.set(
+      this.basePos[0],
+      this.basePos[1] + heave,
+      this.basePos[2]
+    );
+    this.root.rotation.set(pitch, 0, roll);
+
+    // Gentle foam pulsing
+    const pulse = 1.0 + 0.1 * Math.sin(time * 3.0 + this.phase);
+    this.foam.scale.set(pulse, 1, pulse);
+  }
+}
+
+/**
+ * Creates Distant Horizon Island Silhouettes for 3D Background Parallax
+ */
+export class DistantIslandModel {
+  root = new THREE.Group();
+
+  constructor() {
+    const R = this.root;
+
+    // Soft atmospheric mist mountains along the distant horizon (cel-shaded toon)
+    const matMountain = getMat("distMountain", () => ({
+      color: "#778da9",
+    }));
+
+    const islandGeos: THREE.BufferGeometry[] = [];
+
+    // Chain of gentle rolling island hills placed far out along horizon
+    const hills = [
+      { x: 380, z: -180, r: 160, h: 48 },
+      { x: 440, z: -60,  r: 220, h: 62 },
+      { x: 480, z: 80,   r: 260, h: 75 },
+      { x: 420, z: 240,  r: 190, h: 54 },
+      { x: 360, z: 380,  r: 150, h: 42 },
+    ];
+
+    for (const h of hills) {
+      const cone = new THREE.ConeGeometry(h.r, h.h, 16);
+      cone.translate(h.x, h.h / 2 - 4.0, h.z);
+      islandGeos.push(cone);
+    }
+
+    const mesh = new THREE.Mesh(mergeGeometries(islandGeos, false), matMountain);
+    mesh.receiveShadow = false;
+    R.add(mesh);
   }
 }

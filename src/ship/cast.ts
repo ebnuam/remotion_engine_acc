@@ -189,11 +189,14 @@ export const stageShip = (
     }
   }
 
-  // ---- Shot 5: Heroic Outro (Captain Waving) ----
+  // ---- Shot 5: Heroic Outro (Captain Waving on Ship Bow Deck) ----
   if (shotId === 5) {
     const wave = Math.sin((f - 1680) * 0.35);
     const blink = (f % 95 >= 0 && f % 95 <= 3);
-    const captainPos = { x: 8.5, y: 3.5, z: -2.0 };
+    const sailForward = -((f - 1680) / 30) * 1.6;
+    const shipHeave = 0.08 * Math.sin((f / 30) * 2.0);
+    // Captain stands on the elevated forecastle deck of the sailing cargo ship
+    const captainPos = { x: 0.0, y: 5.7 + shipHeave, z: -17.5 + sailForward };
 
     const fo: FrontOpts = {
       mode: "stand",

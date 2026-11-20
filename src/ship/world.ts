@@ -5,6 +5,8 @@ import {
   CoinModel,
   SolidSteelBlockModel,
   UnderwaterSectionModel,
+  BuoyModel,
+  DistantIslandModel,
 } from "./build";
 import { waterNear, waterFar, cloudHD } from "../bridge/paint";
 import { LIGHTS, LOOK } from "../bridge/lights";
@@ -115,6 +117,8 @@ export class ShipWorld {
   public coin: CoinModel;
   public steelBlock: SolidSteelBlockModel;
   public underwaterSection: UnderwaterSectionModel;
+  public islands: DistantIslandModel;
+  public buoys: BuoyModel[] = [];
   public seaMesh: THREE.Mesh;
 
   private lookTarget = new THREE.Vector3();
@@ -172,6 +176,7 @@ export class ShipWorld {
 
     // ---- 3. Distant Cartoon Clouds ----
     const cloudMaps = [0, 1, 2, 3].map((k) => cloudHD(k, LOOK.day.cloud));
+    // Layer 1: Distant outer clouds (d = 650m)
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2 + 0.2;
       const d = 650 + (i % 3) * 50;
@@ -187,6 +192,28 @@ export class ShipWorld {
       );
       const w = 140 + (i % 3) * 35;
       m.position.set(Math.cos(a) * d, 110 + (i % 3) * 30, Math.sin(a) * d);
+      m.scale.set(w, w / 2, 1);
+      m.layers.set(NOINK);
+      this.clouds.push(m);
+      R.add(m);
+    }
+
+    // Layer 2: Nearer mid-level clouds (d = 420m) for authentic 3D motion parallax
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + 0.6;
+      const d = 420 + (i % 3) * 40;
+      const m = new THREE.Mesh(
+        new THREE.PlaneGeometry(1, 1),
+        new THREE.MeshBasicMaterial({
+          map: cloudMaps[(i + 2) % 4],
+          color: new THREE.Color(1.08, 1.08, 1.08),
+          transparent: true,
+          depthWrite: false,
+          fog: false,
+        })
+      );
+      const w = 110 + (i % 3) * 25;
+      m.position.set(Math.cos(a) * d, 65 + (i % 3) * 20, Math.sin(a) * d);
       m.scale.set(w, w / 2, 1);
       m.layers.set(NOINK);
       this.clouds.push(m);
@@ -258,6 +285,26 @@ export class ShipWorld {
 
     this.underwaterSection = new UnderwaterSectionModel();
     R.add(this.underwaterSection.root);
+
+    // Distant horizon mountain ridges for background depth parallax
+    this.islands = new DistantIslandModel();
+    R.add(this.islands.root);
+
+    // Navigational sea buoys at different depths for 3D foreground/midground motion parallax
+    const b1 = new BuoyModel("#f59e0b", "#dc2626", 0.0);
+    b1.setPos(-60.0, 0, -48.0);
+    this.buoys.push(b1);
+    R.add(b1.root);
+
+    const b2 = new BuoyModel("#ef4444", "#ffffff", 1.4);
+    b2.setPos(-35.0, 0, -10.0);
+    this.buoys.push(b2);
+    R.add(b2.root);
+
+    const b3 = new BuoyModel("#10b981", "#ffffff", 2.8);
+    b3.setPos(26.0, 0, -38.0);
+    this.buoys.push(b3);
+    R.add(b3.root);
   }
 
   private actor(i: number) {
@@ -353,8 +400,8 @@ export class ShipWorld {
     this.sky.position.copy(cam.position);
 
     untone(L.fog, this.fog.color);
-    this.fog.near = L.fogNear;
-    this.fog.far = L.fogFar;
+    this.fog.near = 40;
+    this.fog.far = 580;
     scene.fog = this.fog;
     scene.background = null;
 
@@ -382,6 +429,11 @@ export class ShipWorld {
 
     const anim = ep1AnimationStateAt(f);
 
+    // Update floating buoys heave & roll
+    for (const b of this.buoys) {
+      b.update(t);
+    }
+
     // ---- 6. Shot-Specific Staging & Geometry Setup ----
     if (shotId === 1) {
       this.pier.root.visible = false;
@@ -397,6 +449,8 @@ export class ShipWorld {
 
         this.coin.root.visible = true;
         this.ship.root.visible = false;
+        this.islands.root.visible = false;
+        for (const b of this.buoys) b.root.visible = false;
 
         const cs = coinStateAt(f);
         this.coin.update(cs.pos, cs.visible, cs.rot);
@@ -407,6 +461,8 @@ export class ShipWorld {
 
         this.coin.root.visible = false;
         this.ship.root.visible = true;
+        this.islands.root.visible = true;
+        for (const b of this.buoys) b.root.visible = true;
 
         this.ship.root.position.set(0, shipHeave, 0);
         this.ship.root.rotation.set(shipPitch, 0, shipRoll);
@@ -418,6 +474,8 @@ export class ShipWorld {
       this.coin.root.visible = false;
       this.steelBlock.root.visible = false;
       this.underwaterSection.root.visible = false;
+      this.islands.root.visible = true;
+      for (const b of this.buoys) b.root.visible = true;
       this.seaMesh.position.set(0, 0, 0);
 
       // Ship floating in background
@@ -431,7 +489,6 @@ export class ShipWorld {
 
       if (f < 845) {
         // Shot 3A: Solid Steel Block Plunge
-        // Trim foreground water (z < 0) so block plunging underwater is 100% visible
         this.seaMesh.position.set(0, 0, 1200);
         this.underwaterSection.root.position.set(0, 0, 0.1);
         this.underwaterSection.root.rotation.set(0, 0, 0);
@@ -439,6 +496,8 @@ export class ShipWorld {
 
         this.ship.root.visible = false;
         this.steelBlock.root.visible = true;
+        this.islands.root.visible = false;
+        for (const b of this.buoys) b.root.visible = false;
 
         const sb = steelBlockStateAt(f);
         this.steelBlock.update(sb.pos, sb.visible);
@@ -449,6 +508,8 @@ export class ShipWorld {
 
         this.steelBlock.root.visible = false;
         this.ship.root.visible = true;
+        this.islands.root.visible = true;
+        for (const b of this.buoys) b.root.visible = true;
 
         this.ship.root.position.set(0, shipHeave, 0);
         this.ship.root.rotation.set(shipPitch, 0, shipRoll);
@@ -459,10 +520,12 @@ export class ShipWorld {
       this.pier.root.visible = false;
       this.coin.root.visible = false;
       this.steelBlock.root.visible = false;
+      this.islands.root.visible = true;
+      for (const b of this.buoys) b.root.visible = false;
 
-      // Cross-section view: water plane trimmed at x=-6.0 so underwater keel & 3 green arrows are 100% visible
+      // Cross-section view: water plane backdrop at x=7.0 so underwater keel & 3 green arrows are 100% visible
       this.seaMesh.position.set(1200, 0, 0);
-      this.underwaterSection.root.position.set(-5.9, 0, 5.0);
+      this.underwaterSection.root.position.set(7.0, 0, 5.0);
       this.underwaterSection.root.rotation.set(0, Math.PI / 2, 0);
       this.underwaterSection.root.visible = true;
 
@@ -476,11 +539,13 @@ export class ShipWorld {
         t
       );
     } else {
-      // Shot 5: Heroic Outro Sailing Ship
-      this.pier.root.visible = true;
+      // Shot 5: Heroic Outro Sailing Ship (Full ship sails into distance)
+      this.pier.root.visible = false;
       this.coin.root.visible = false;
       this.steelBlock.root.visible = false;
       this.underwaterSection.root.visible = false;
+      this.islands.root.visible = true;
+      for (const b of this.buoys) b.root.visible = true;
       this.seaMesh.position.set(0, 0, 0);
 
       const sailForward = -((f - 1680) / FPS) * 1.6;

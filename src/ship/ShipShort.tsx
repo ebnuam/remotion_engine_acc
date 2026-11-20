@@ -167,6 +167,7 @@ const ShotView: React.FC<{ id: number; alpha: number }> = ({ id, alpha }) => {
 
 /**
  * Educational UI Badges & Callout Overlays
+ * Free of Unicode emoji tofu boxes; clean vector styling for Linux
  */
 const EducationalBadges: React.FC<{ frame: number }> = ({ frame }) => {
   // Shot 2: Engine Off Badge (f=437..660)
@@ -194,7 +195,7 @@ const EducationalBadges: React.FC<{ frame: number }> = ({ frame }) => {
           '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
       }}
     >
-      {/* 1. Shot 2: MESIN MATI ❌ Badge */}
+      {/* 1. Shot 2: MESIN MATI Badge (Clean SVG cross icon) */}
       {showEngineOff && (
         <div
           style={{
@@ -204,7 +205,7 @@ const EducationalBadges: React.FC<{ frame: number }> = ({ frame }) => {
             background: "rgba(220, 38, 38, 0.95)",
             border: "3px solid #ffffff",
             borderRadius: "14px",
-            padding: "8px 16px",
+            padding: "8px 18px",
             color: "#ffffff",
             fontWeight: 900,
             fontSize: "24px",
@@ -212,15 +213,18 @@ const EducationalBadges: React.FC<{ frame: number }> = ({ frame }) => {
             boxShadow: "0 6px 20px rgba(0, 0, 0, 0.5)",
             display: "flex",
             alignItems: "center",
-            gap: "8px",
+            gap: "10px",
           }}
         >
-          <span style={{ fontSize: "28px" }}>⚙️</span>
-          <span>MESIN MATI ❌</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+          <span>MESIN MATI</span>
         </div>
       )}
 
-      {/* 2. Shot 3A: BAJA PADAT Badge */}
+      {/* 2. Shot 3A: BAJA PADAT Badge (Pure Clean Text) */}
       {showSteelBlock && (
         <div
           style={{
@@ -240,11 +244,11 @@ const EducationalBadges: React.FC<{ frame: number }> = ({ frame }) => {
             textTransform: "uppercase",
           }}
         >
-          ⚙️ BAJA PADAT (PEJAL)
+          BAJA PADAT (PEJAL)
         </div>
       )}
 
-      {/* 3. Shot 3B: RONGGA UDARA KOSONG Banner */}
+      {/* 3. Shot 3B: RONGGA UDARA KOSONG Banner (Pure Clean Text) */}
       {showHollowCavity && (
         <div
           style={{
@@ -264,7 +268,7 @@ const EducationalBadges: React.FC<{ frame: number }> = ({ frame }) => {
             textTransform: "uppercase",
           }}
         >
-          💨 RONGGA UDARA KOSONG
+          RONGGA UDARA KOSONG
         </div>
       )}
 
@@ -273,13 +277,13 @@ const EducationalBadges: React.FC<{ frame: number }> = ({ frame }) => {
         <div
           style={{
             position: "absolute",
-            top: "22%",
+            top: "19%",
             left: "50%",
             transform: "translateX(-50%)",
             background: "rgba(239, 68, 68, 0.95)",
             border: "3px solid #ffffff",
             borderRadius: "12px",
-            padding: "6px 18px",
+            padding: "6px 20px",
             color: "#ffffff",
             fontWeight: 900,
             fontSize: "24px",
@@ -292,18 +296,18 @@ const EducationalBadges: React.FC<{ frame: number }> = ({ frame }) => {
         </div>
       )}
 
-      {/* 5. Shot 4: GAYA APUNG ↑ Label */}
+      {/* 5. Shot 4: GAYA APUNG ↑ Label (Raised to bottom 33% to prevent subtitle collision) */}
       {showBuoyancyLabel && (
         <div
           style={{
             position: "absolute",
-            bottom: "28%",
+            bottom: "33%",
             left: "50%",
             transform: "translateX(-50%)",
             background: "rgba(16, 185, 129, 0.95)",
             border: "3px solid #ffffff",
             borderRadius: "12px",
-            padding: "6px 18px",
+            padding: "6px 20px",
             color: "#ffffff",
             fontWeight: 900,
             fontSize: "24px",
@@ -316,25 +320,25 @@ const EducationalBadges: React.FC<{ frame: number }> = ({ frame }) => {
         </div>
       )}
 
-      {/* 6. Shot 4: SEIMBANG Badge */}
+      {/* 6. Shot 4: KONDISI SEIMBANG Badge */}
       {showBalanceBadge && (
         <div
           style={{
             position: "absolute",
-            top: "48%",
+            top: "47%",
             right: "8%",
-            background: "rgba(15, 23, 42, 0.92)",
+            background: "rgba(15, 23, 42, 0.94)",
             border: "3px solid #fbbf24",
             borderRadius: "12px",
-            padding: "6px 14px",
+            padding: "6px 16px",
             color: "#fbbf24",
             fontWeight: 900,
             fontSize: "20px",
-            letterSpacing: "0.8px",
+            letterSpacing: "1px",
             boxShadow: "0 6px 20px rgba(0, 0, 0, 0.6)",
           }}
         >
-          ⚖️ SEIMBANG
+          KONDISI SEIMBANG
         </div>
       )}
     </div>

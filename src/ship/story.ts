@@ -61,24 +61,29 @@ export const camAt = (id: number, f: number): Cam => {
   if (id === 1) {
     if (f < 111) {
       // Shot 1A (f=0..110): Close/medium center view on the large gold coin.
-      // Starts above water, tracks the coin as it plunges and sinks underwater.
+      // Sinks underwater in center frame with splash and bubbles.
       const u = clamp01(f / 110);
       const k = glide(u);
       const pos: V3 = [0.0, 1.6 - 1.4 * k, -5.6 - 0.6 * k];
       const look: V3 = [0.0, 1.2 - 3.8 * k, 0.0];
       return { pos, look, fov: 42, roll: 0 };
     } else {
-      // Shot 1B (f=111..304): Expansive wide 3/4 cinematic shot of the ENTIRE CARGO SHIP.
-      // Sized and distanced so the whole 54m vessel from bow to stern fits in 9:16 portrait.
+      // Shot 1B (f=111..304): 100% Full Ship Reveal + Slow Orbit Zoom-In
+      // Starts from Ultra-Wide Shot (D=130m, 100% full ship visible from bow to stern with sea margins)
+      // Then executes a slow orbit and smooth zoom-in closer to the vessel.
       const u = clamp01((f - 111) / 193);
       const k = glide(u);
       const pos: V3 = [
-        -42.0 + 4.0 * k,
-        13.0 - 2.0 * k,
-        -20.0 + 4.0 * k,
+        -105.0 + 45.0 * k,
+        10.5 - 2.5 * k,
+        -75.0 + 40.0 * k,
       ];
-      const look: V3 = [0.0, 3.8, 6.0];
-      return { pos, look, fov: 44 - 2 * k, roll: 0.006 * (1 - 2 * k) };
+      const look: V3 = [
+        0.0,
+        4.0,
+        4.0 + 1.0 * k,
+      ];
+      return { pos, look, fov: 42 - 2.0 * k, roll: 0.005 * (1 - 2 * k) };
     }
   }
 
@@ -111,54 +116,72 @@ export const camAt = (id: number, f: number): Cam => {
       const look: V3 = [0.0, 1.0 - 4.0 * ka, 0.0];
       return { pos, look, fov: 42, roll: 0 };
     } else {
-      // Part B (f=845..1156): Broadside view of cutaway hull revealing vast hollow air hold
+      // Part B (f=845..1156): Begins with full recognizable ship shape,
+      // smooth zoom-in into hollow air cavity, then gentle pull back out.
       const ub = clamp01((f - 845) / 311);
-      const kb = glide(ub);
-      const pos: V3 = [
-        -27.0 - 2.0 * kb,
-        3.8 + 0.4 * kb,
-        5.0 + 2.0 * kb,
-      ];
-      const look: V3 = [0.0, 3.2, 5.0 + 0.5 * kb];
-      return { pos, look, fov: 40, roll: 0 };
+      let pos: V3;
+      let look: V3;
+
+      if (ub < 0.45) {
+        // Phase 1 (f=845..985): Wide perspective zoom-in to air hold
+        const k1 = glide(ub / 0.45);
+        pos = [
+          -72.0 + 38.0 * k1,
+          16.0 - 11.5 * k1,
+          -30.0 + 35.0 * k1,
+        ];
+        look = [0.0, 3.8 - 0.6 * k1, 5.0];
+      } else {
+        // Phase 2 (f=985..1156): Slight pull back out for context
+        const k2 = glide((ub - 0.45) / 0.55);
+        pos = [
+          -34.0 - 14.0 * k2,
+          4.5 + 2.2 * k2,
+          5.0 - 2.0 * k2,
+        ];
+        look = [0.0, 3.2 + 0.3 * k2, 5.0];
+      }
+      return { pos, look, fov: 42 - 2 * Math.sin(ub * Math.PI), roll: 0 };
     }
   }
 
   if (id === 4) {
     // Shot 4: Archimedes Buoyancy Force Dynamics (50:50 Waterline Split)
-    // Camera is positioned at y = 0.2 looking horizontally across the waterline:
-    // Top 50% = ship above water + red gravity arrow
-    // Bottom 50% = submerged red hull + 3 green buoyancy arrows underwater
+    // Camera pulled back to broadside distance (~138m) so 100% of the 54m vessel
+    // fits horizontally in 9:16 portrait with sea margins on both sides!
+    // Moves along a gentle, majestic parallax arc.
     const u = clamp01((f - 1156) / 524);
     const k = glide(u);
+    const zArc = -6.0 + 12.0 * k;
     const pos: V3 = [
-      -29.0 + 1.0 * k,
+      -138.0 + 4.0 * Math.cos(k * Math.PI),
       0.2,
-      5.0 + 1.0 * k,
+      5.0 + zArc,
     ];
     const look: V3 = [
       0.0,
       0.2,
       5.0 + 0.5 * k,
     ];
-    return { pos, look, fov: 40, roll: 0 };
+    return { pos, look, fov: 42, roll: 0 };
   }
 
   // Shot 5: Heroic Outro (f=1680..2010)
-  // Wide cinematic pull-back shot showing full ship sailing across the open ocean
+  // Starts medium on Captain waving, then executes a smooth, grand zoom-out
+  // far into the distance, revealing the full ship sailing across open ocean!
   const u = clamp01((f - 1680) / 330);
   const k = glide(u);
   const pos: V3 = [
-    -36.0 - 10.0 * k,
-    11.0 + 5.0 * k,
-    -24.0 - 18.0 * k,
+    -26.0 - 94.0 * k,
+    8.5 + 22.0 * k,
+    -14.0 - 70.0 * k,
   ];
   const look: V3 = [
     0.0,
-    5.5 + 1.5 * k,
-    6.0 + 8.0 * k,
+    5.0 + 1.0 * k,
+    -2.0 + 12.0 * k,
   ];
-  return { pos, look, fov: 42 - 3 * k, roll: 0.006 * (1 - 2 * k) };
+  return { pos, look, fov: 38 + 4.0 * k, roll: 0.005 * (1 - 2 * k) };
 };
 
 // ---------------- Depth of Field ----------------
