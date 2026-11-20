@@ -8,10 +8,8 @@ import {
   fxContact,
   fxShadow,
   fxSplash,
-  SKIN,
-  INK,
 } from "../bridge/toon";
-import { Pool, Actor, Fx, SU } from "../bridge/cast";
+import { Pool, Actor, Fx } from "../bridge/cast";
 import { coinStateAt, steelBlockStateAt } from "./story";
 
 export { Pool, Actor, Fx };
@@ -64,12 +62,9 @@ export const CAPTAIN: Outfit = {
 
 /** Draw custom captain hat details on top of standard head */
 const drawCaptainCap = (p: Pen, cx: number, cy: number) => {
-  // Gold anchor badge on cap band
-  p.ell(cx, cy - 25, 12, 10, "#fbbf24", 2);
-  // White crown top
-  p.ell(cx, cy - 50, 48, 22, "#f8fafc", 4);
-  // Shiny black visor
-  p.ell(cx, cy - 10, 52, 14, "#0f172a", 2);
+  p.ell(cx, cy - 25, 12, 10, "#fbbf24", 2); // Gold anchor badge
+  p.ell(cx, cy - 50, 48, 22, "#f8fafc", 4); // White crown top
+  p.ell(cx, cy - 10, 52, 14, "#0f172a", 2); // Shiny black visor
 };
 
 export const stageShip = (
@@ -79,12 +74,12 @@ export const stageShip = (
 ): ShipStage => {
   const out: ShipStage = { places: [], fx: [] };
 
-  // ---- Shot 1: Sinking Coin Splash ----
-  if (shotId === 1) {
+  // ---- Shot 1: Sinking Gold Coin Splash ----
+  if (shotId === 1 && f < 111) {
     const cs = coinStateAt(f);
     if (cs.splashT > 0 && cs.splashT < 1) {
       const u = cs.splashT;
-      const splashSize = 1.6 * Math.sin(u * Math.PI);
+      const splashSize = 2.4 * Math.sin(u * Math.PI);
       out.fx.push({
         key: `coin_splash|${Math.round(u * 20)}`,
         cw: 800,
@@ -111,9 +106,7 @@ export const stageShip = (
       expr = "grin";
     }
 
-    // Natural periodic blinks
-    const blink = (f % 110 >= 0 && f % 110 <= 3);
-
+    const blink = (f % 105 >= 0 && f % 105 <= 3);
     const captainPos = { x: 9.8, y: 3.5, z: 0.0 };
 
     const fo: FrontOpts = {
@@ -144,7 +137,7 @@ export const stageShip = (
       },
     });
 
-    // Contact shadow blob on the pier deck
+    // Contact shadow
     const shadowColor = "#2d2338";
     out.fx.push({
       key: `blob|contact|capt2`,
@@ -175,12 +168,12 @@ export const stageShip = (
     });
   }
 
-  // ---- Shot 3: Steel Block Plunge Splash ----
-  if (shotId === 3) {
+  // ---- Shot 3: Solid Steel Block Plunge Splash ----
+  if (shotId === 3 && f < 845) {
     const sb = steelBlockStateAt(f);
     if (sb.splashT > 0 && sb.splashT < 1) {
       const u = sb.splashT;
-      const splashSize = 5.2 * Math.sin(u * Math.PI);
+      const splashSize = 5.8 * Math.sin(u * Math.PI);
       out.fx.push({
         key: `steel_splash|${Math.round(u * 20)}`,
         cw: 800,
@@ -198,7 +191,7 @@ export const stageShip = (
 
   // ---- Shot 5: Heroic Outro (Captain Waving) ----
   if (shotId === 5) {
-    const wave = Math.sin((f - 1650) * 0.35);
+    const wave = Math.sin((f - 1680) * 0.35);
     const blink = (f % 95 >= 0 && f % 95 <= 3);
     const captainPos = { x: 8.5, y: 3.5, z: -2.0 };
 

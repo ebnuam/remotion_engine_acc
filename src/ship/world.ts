@@ -4,6 +4,7 @@ import {
   PierModel,
   CoinModel,
   SolidSteelBlockModel,
+  UnderwaterSectionModel,
 } from "./build";
 import { waterNear, waterFar, cloudHD } from "../bridge/paint";
 import { LIGHTS, LOOK } from "../bridge/lights";
@@ -113,6 +114,8 @@ export class ShipWorld {
   public pier: PierModel;
   public coin: CoinModel;
   public steelBlock: SolidSteelBlockModel;
+  public underwaterSection: UnderwaterSectionModel;
+  public seaMesh: THREE.Mesh;
 
   private lookTarget = new THREE.Vector3();
 
@@ -210,7 +213,11 @@ export class ShipWorld {
       wFarTex: { value: wFar },
       wTime: { value: 0 },
     };
-    const waterM = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const waterM = new THREE.MeshLambertMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.92,
+    });
     waterM.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, this.WU);
       sh.vertexShader = sh.vertexShader
@@ -229,12 +236,12 @@ export class ShipWorld {
         );
     };
     waterM.customProgramCacheKey = () => "shipSea1";
-    const seaMesh = new THREE.Mesh(
+    this.seaMesh = new THREE.Mesh(
       quadUp(-1200, 1200, -1200, 1200, 1, 1, 0),
       waterM
     );
-    seaMesh.receiveShadow = true;
-    R.add(seaMesh);
+    this.seaMesh.receiveShadow = true;
+    R.add(this.seaMesh);
 
     // ---- 5. 3D Models ----
     this.ship = new ShipModel();
@@ -248,6 +255,9 @@ export class ShipWorld {
 
     this.steelBlock = new SolidSteelBlockModel();
     R.add(this.steelBlock.root);
+
+    this.underwaterSection = new UnderwaterSectionModel();
+    R.add(this.underwaterSection.root);
   }
 
   private actor(i: number) {
@@ -370,49 +380,93 @@ export class ShipWorld {
     const shipRoll = 0.008 * Math.cos(t * 1.2);
     const shipHeave = 0.08 * Math.sin(t * 2.0);
 
-    // Animation state
     const anim = ep1AnimationStateAt(f);
 
-    // ---- 6. Shot-Specific Logic ----
+    // ---- 6. Shot-Specific Staging & Geometry Setup ----
     if (shotId === 1) {
-      // Shot 1: Wide Ship 3/4 + Coin Drop
       this.pier.root.visible = false;
       this.steelBlock.root.visible = false;
 
-      this.ship.root.position.set(0, shipHeave, 0);
-      this.ship.root.rotation.set(shipPitch, 0, shipRoll);
-      this.ship.update(0, 0, 0, t);
+      if (f < 111) {
+        // Shot 1A: Large Gold Coin Sinking
+        // Trim foreground water (z < 0) so coin sinking underwater is 100% visible
+        this.seaMesh.position.set(0, 0, 1200);
+        this.underwaterSection.root.position.set(0, 0, 0.1);
+        this.underwaterSection.root.rotation.set(0, 0, 0);
+        this.underwaterSection.root.visible = true;
 
-      // Coin drop update
-      const cs = coinStateAt(f);
-      this.coin.update(cs.pos, cs.visible, cs.rot);
+        this.coin.root.visible = true;
+        this.ship.root.visible = false;
+
+        const cs = coinStateAt(f);
+        this.coin.update(cs.pos, cs.visible, cs.rot);
+      } else {
+        // Shot 1B: Full Ship Silhouette Reveal
+        this.seaMesh.position.set(0, 0, 0);
+        this.underwaterSection.root.visible = false;
+
+        this.coin.root.visible = false;
+        this.ship.root.visible = true;
+
+        this.ship.root.position.set(0, shipHeave, 0);
+        this.ship.root.rotation.set(shipPitch, 0, shipRoll);
+        this.ship.update(0, 0, 0, t);
+      }
     } else if (shotId === 2) {
       // Shot 2: Deck Presenter (Captain)
       this.pier.root.visible = true;
       this.coin.root.visible = false;
       this.steelBlock.root.visible = false;
+      this.underwaterSection.root.visible = false;
+      this.seaMesh.position.set(0, 0, 0);
 
-      // Ship visible in background for scale contrast
+      // Ship floating in background
+      this.ship.root.visible = true;
       this.ship.root.position.set(-18, shipHeave - 0.2, -6);
       this.ship.root.rotation.set(shipPitch, 0.35, shipRoll);
       this.ship.update(0, 0, 0, t);
     } else if (shotId === 3) {
-      // Shot 3: Solid Steel Block vs Hollow Hull Cavern
       this.pier.root.visible = false;
       this.coin.root.visible = false;
 
-      this.ship.root.position.set(0, shipHeave, 0);
-      this.ship.root.rotation.set(shipPitch, 0, shipRoll);
-      this.ship.update(anim.cutawayProgress, 0, 0, t);
+      if (f < 845) {
+        // Shot 3A: Solid Steel Block Plunge
+        // Trim foreground water (z < 0) so block plunging underwater is 100% visible
+        this.seaMesh.position.set(0, 0, 1200);
+        this.underwaterSection.root.position.set(0, 0, 0.1);
+        this.underwaterSection.root.rotation.set(0, 0, 0);
+        this.underwaterSection.root.visible = true;
 
-      const sb = steelBlockStateAt(f);
-      this.steelBlock.update(sb.pos, sb.visible);
+        this.ship.root.visible = false;
+        this.steelBlock.root.visible = true;
+
+        const sb = steelBlockStateAt(f);
+        this.steelBlock.update(sb.pos, sb.visible);
+      } else {
+        // Shot 3B: Cutaway Cavern
+        this.seaMesh.position.set(0, 0, 0);
+        this.underwaterSection.root.visible = false;
+
+        this.steelBlock.root.visible = false;
+        this.ship.root.visible = true;
+
+        this.ship.root.position.set(0, shipHeave, 0);
+        this.ship.root.rotation.set(shipPitch, 0, shipRoll);
+        this.ship.update(anim.cutawayProgress, 0, 0, t);
+      }
     } else if (shotId === 4) {
-      // Shot 4: Archimedes Buoyant Force Dynamics
+      // Shot 4: Archimedes Buoyancy Force Dynamics (50:50 Split)
       this.pier.root.visible = false;
       this.coin.root.visible = false;
       this.steelBlock.root.visible = false;
 
+      // Cross-section view: water plane trimmed at x=-6.0 so underwater keel & 3 green arrows are 100% visible
+      this.seaMesh.position.set(1200, 0, 0);
+      this.underwaterSection.root.position.set(-5.9, 0, 5.0);
+      this.underwaterSection.root.rotation.set(0, Math.PI / 2, 0);
+      this.underwaterSection.root.visible = true;
+
+      this.ship.root.visible = true;
       this.ship.root.position.set(0, shipHeave, 0);
       this.ship.root.rotation.set(shipPitch, 0, shipRoll);
       this.ship.update(
@@ -422,13 +476,15 @@ export class ShipWorld {
         t
       );
     } else {
-      // Shot 5: Heroic Outro (Sailing into distance)
+      // Shot 5: Heroic Outro Sailing Ship
       this.pier.root.visible = true;
       this.coin.root.visible = false;
       this.steelBlock.root.visible = false;
+      this.underwaterSection.root.visible = false;
+      this.seaMesh.position.set(0, 0, 0);
 
-      // Ship sails forward along -z
-      const sailForward = -((f - 1650) / FPS) * 1.5;
+      const sailForward = -((f - 1680) / FPS) * 1.6;
+      this.ship.root.visible = true;
       this.ship.root.position.set(0, shipHeave, sailForward);
       this.ship.root.rotation.set(shipPitch, 0, shipRoll);
       this.ship.update(0, 0, 0, t);

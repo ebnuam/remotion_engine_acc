@@ -46,8 +46,7 @@ const toggles = (): PostToggles => ({
 });
 
 /**
- * Bloom for emissive sources & sky/water highlights.
- * Mirrored from Bridge post pipeline.
+ * Bloom for emissive highlights and sky/water cel glints.
  */
 const makeBloom = () => {
   const b = new BloomEffect({
@@ -166,6 +165,182 @@ const ShotView: React.FC<{ id: number; alpha: number }> = ({ id, alpha }) => {
   );
 };
 
+/**
+ * Educational UI Badges & Callout Overlays
+ */
+const EducationalBadges: React.FC<{ frame: number }> = ({ frame }) => {
+  // Shot 2: Engine Off Badge (f=437..660)
+  const showEngineOff = frame >= 437 && frame <= 660;
+
+  // Shot 3A: Solid Steel Block Badge (f=670..844)
+  const showSteelBlock = frame >= 670 && frame <= 844;
+
+  // Shot 3B: Hollow Air Cavity Badge (f=870..1150)
+  const showHollowCavity = frame >= 870 && frame <= 1150;
+
+  // Shot 4: Force Arrows Labels (f=1180..1660)
+  const showGravityLabel = frame >= 1180 && frame <= 1660;
+  const showBuoyancyLabel = frame >= 1360 && frame <= 1660;
+  const showBalanceBadge = frame >= 1520 && frame <= 1660;
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        pointerEvents: "none",
+        zIndex: 40,
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      }}
+    >
+      {/* 1. Shot 2: MESIN MATI ❌ Badge */}
+      {showEngineOff && (
+        <div
+          style={{
+            position: "absolute",
+            top: "14%",
+            right: "8%",
+            background: "rgba(220, 38, 38, 0.95)",
+            border: "3px solid #ffffff",
+            borderRadius: "14px",
+            padding: "8px 16px",
+            color: "#ffffff",
+            fontWeight: 900,
+            fontSize: "24px",
+            letterSpacing: "1px",
+            boxShadow: "0 6px 20px rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <span style={{ fontSize: "28px" }}>⚙️</span>
+          <span>MESIN MATI ❌</span>
+        </div>
+      )}
+
+      {/* 2. Shot 3A: BAJA PADAT Badge */}
+      {showSteelBlock && (
+        <div
+          style={{
+            position: "absolute",
+            top: "20%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(30, 41, 59, 0.95)",
+            border: "3px solid #cbd5e1",
+            borderRadius: "14px",
+            padding: "8px 22px",
+            color: "#f8fafc",
+            fontWeight: 900,
+            fontSize: "26px",
+            letterSpacing: "1.2px",
+            boxShadow: "0 6px 24px rgba(0, 0, 0, 0.6)",
+            textTransform: "uppercase",
+          }}
+        >
+          ⚙️ BAJA PADAT (PEJAL)
+        </div>
+      )}
+
+      {/* 3. Shot 3B: RONGGA UDARA KOSONG Banner */}
+      {showHollowCavity && (
+        <div
+          style={{
+            position: "absolute",
+            top: "22%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(14, 165, 233, 0.95)",
+            border: "3px solid #ffffff",
+            borderRadius: "14px",
+            padding: "10px 24px",
+            color: "#ffffff",
+            fontWeight: 900,
+            fontSize: "26px",
+            letterSpacing: "1.2px",
+            boxShadow: "0 6px 24px rgba(0, 0, 0, 0.5)",
+            textTransform: "uppercase",
+          }}
+        >
+          💨 RONGGA UDARA KOSONG
+        </div>
+      )}
+
+      {/* 4. Shot 4: BERAT KAPAL ↓ Label */}
+      {showGravityLabel && (
+        <div
+          style={{
+            position: "absolute",
+            top: "22%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(239, 68, 68, 0.95)",
+            border: "3px solid #ffffff",
+            borderRadius: "12px",
+            padding: "6px 18px",
+            color: "#ffffff",
+            fontWeight: 900,
+            fontSize: "24px",
+            letterSpacing: "1px",
+            boxShadow: "0 6px 20px rgba(0, 0, 0, 0.5)",
+            textTransform: "uppercase",
+          }}
+        >
+          BERAT KAPAL ↓
+        </div>
+      )}
+
+      {/* 5. Shot 4: GAYA APUNG ↑ Label */}
+      {showBuoyancyLabel && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "28%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(16, 185, 129, 0.95)",
+            border: "3px solid #ffffff",
+            borderRadius: "12px",
+            padding: "6px 18px",
+            color: "#ffffff",
+            fontWeight: 900,
+            fontSize: "24px",
+            letterSpacing: "1px",
+            boxShadow: "0 6px 20px rgba(0, 0, 0, 0.5)",
+            textTransform: "uppercase",
+          }}
+        >
+          GAYA APUNG ↑
+        </div>
+      )}
+
+      {/* 6. Shot 4: SEIMBANG Badge */}
+      {showBalanceBadge && (
+        <div
+          style={{
+            position: "absolute",
+            top: "48%",
+            right: "8%",
+            background: "rgba(15, 23, 42, 0.92)",
+            border: "3px solid #fbbf24",
+            borderRadius: "12px",
+            padding: "6px 14px",
+            color: "#fbbf24",
+            fontWeight: 900,
+            fontSize: "20px",
+            letterSpacing: "0.8px",
+            boxShadow: "0 6px 20px rgba(0, 0, 0, 0.6)",
+          }}
+        >
+          ⚖️ SEIMBANG
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const ShipShort: React.FC = () => {
   const f = useCurrentFrame();
 
@@ -179,7 +354,10 @@ export const ShipShort: React.FC = () => {
         <ShotView key={l.id} id={l.id} alpha={l.alpha} />
       ))}
 
-      {/* 3. Subtitle Overlay in 9:16 Safe Zone */}
+      {/* 3. Educational Badges & UI Callouts */}
+      <EducationalBadges frame={f} />
+
+      {/* 4. Subtitle Overlay in 9:16 Safe Zone */}
       <SubtitleOverlay frame={f} />
     </AbsoluteFill>
   );
