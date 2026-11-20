@@ -76,8 +76,10 @@ export const getActiveSubtitle = (frame: number): string | null => {
 /**
  * Subtitle Overlay Component
  * Styled for 9:16 safe zone:
- * - Positioned at 22% from bottom (above TikTok/Reels captions & interactions)
- * - Ultra-crisp bold typography with strong drop-shadow/outline
+ * - Positioned at 20% from bottom (safe zone for Shorts/Reels/TikTok)
+ * - Transparent background (no dark box blocking 3D scene / force arrows)
+ * - Crisp bold white text with thick black stroke & drop shadow
+ * - Compact font size (reduced ~22%) with maxWidth 86% and center alignment
  */
 export const SubtitleOverlay: React.FC<{ frame: number }> = ({ frame }) => {
   const text = getActiveSubtitle(frame);
@@ -89,13 +91,13 @@ export const SubtitleOverlay: React.FC<{ frame: number }> = ({ frame }) => {
         position: "absolute",
         left: 0,
         right: 0,
-        bottom: "22%",
+        bottom: "20%",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
         pointerEvents: "none",
         zIndex: 50,
-        padding: "0 36px",
+        padding: "0 24px",
       }}
     >
       <div
@@ -103,19 +105,17 @@ export const SubtitleOverlay: React.FC<{ frame: number }> = ({ frame }) => {
           fontFamily:
             '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
           fontWeight: 900,
-          fontSize: "46px",
-          lineHeight: 1.25,
+          fontSize: "35px",
+          lineHeight: 1.3,
           color: "#ffffff",
           textAlign: "center",
           textTransform: "uppercase",
-          letterSpacing: "1.5px",
+          letterSpacing: "1.2px",
+          maxWidth: "86%",
+          WebkitTextStroke: "2.5px #000000",
+          paintOrder: "stroke fill",
           textShadow:
-            "-3px -3px 0 #0f172a, 3px -3px 0 #0f172a, -3px 3px 0 #0f172a, 3px 3px 0 #0f172a, 0 6px 16px rgba(0,0,0,0.85)",
-          padding: "10px 24px",
-          borderRadius: "16px",
-          background: "rgba(15, 23, 42, 0.4)",
-          backdropFilter: "blur(4px)",
-          maxWidth: "88%",
+            "-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, -3px 0 0 #000, 3px 0 0 #000, 0 -3px 0 #000, 0 3px 0 #000, 0 4px 14px rgba(0, 0, 0, 0.95)",
         }}
       >
         {text}
