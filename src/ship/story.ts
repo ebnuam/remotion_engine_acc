@@ -147,9 +147,9 @@ export const MICRO_SHOTS: MicroShot[] = [
     start: 437,
     end: 520,
     cam: (k) => ({
-      pos: [3.8 - 0.8 * k, -1.8 - 0.2 * k, 37.0 - 1.8 * k],
-      look: [0.0, -2.4, 32.8],
-      fov: 36,
+      pos: [12.5 - 2.0 * k, -2.2 - 0.4 * k, 50.5 - 3.5 * k],
+      look: [0.0, -1.8, 32.5],
+      fov: 38,
       roll: 0,
     }),
   },
