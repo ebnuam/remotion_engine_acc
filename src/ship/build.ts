@@ -55,6 +55,8 @@ export class ShipModel {
   cutawayInterior: THREE.Group = new THREE.Group();
   gravityArrow: THREE.Group = new THREE.Group();
   buoyancyArrows: THREE.Group = new THREE.Group();
+  propeller: THREE.Group = new THREE.Group();
+  rudder!: THREE.Mesh;
   bowWake: THREE.Mesh;
 
   constructor() {
@@ -285,7 +287,15 @@ export class ShipModel {
     this.buildBuoyancyArrows(matGreenArrow);
     R.add(this.buoyancyArrows);
 
-    // ---- 9. Bow Wake Foam Mesh ----
+    // ---- 9. 3D Stern Propeller & Rudder (Shot 2 & Outro) ----
+    const matBronze = getMat("shipBronze", () => ({
+      color: "#f59e0b",
+      emissive: "#b45309",
+      emissiveIntensity: 0.35,
+    }));
+    this.buildPropeller(matBronze, matSteel, matHullDark);
+
+    // ---- 10. Bow Wake Foam Mesh ----
     const wakeGeo = new THREE.RingGeometry(2.0, 9.0, 32, 1, 0, Math.PI);
     wakeGeo.rotateX(-Math.PI / 2);
     wakeGeo.translate(0, 0.05, -20);
@@ -352,7 +362,70 @@ export class ShipModel {
     B.scale.set(0.001, 0.001, 0.001);
   }
 
-  update(cutawayProgress: number, gravityScale: number, buoyancyScale: number, time: number) {
+  private buildPropeller(
+    matBronze: THREE.Material,
+    matShaft: THREE.Material,
+    matRudder: THREE.Material
+  ) {
+    const R = this.root;
+    const P = this.propeller;
+
+    // 1. Fixed Shaft Boss protruding from hull skeg (y=-2.3, z=31.6 to 32.5)
+    const shaftGeo = new THREE.CylinderGeometry(0.48, 0.48, 1.0, 16);
+    shaftGeo.rotateX(Math.PI / 2);
+    shaftGeo.translate(0, -2.3, 32.1);
+    const shaftMesh = new THREE.Mesh(shaftGeo, matShaft);
+    shaftMesh.castShadow = true;
+    R.add(shaftMesh);
+
+    // 2. Rotating Propeller Assembly (positioned at z=32.7, y=-2.3)
+    P.position.set(0, -2.3, 32.7);
+
+    // Propeller Hub (cone nose pointing aft)
+    const hubGeo = new THREE.CylinderGeometry(0.35, 0.55, 0.9, 16);
+    hubGeo.rotateX(-Math.PI / 2);
+    hubGeo.translate(0, 0, 0.35);
+
+    // 4 Propeller Blades (diameter 4.2m)
+    const bladeGeos: THREE.BufferGeometry[] = [hubGeo];
+    for (let i = 0; i < 4; i++) {
+      const angle = (i * Math.PI) / 2;
+      // Sculpted marine blade: wider at mid-span, tapered tip
+      const b1 = boxGeo(V(-0.45, 0.45, -0.06), V(0.45, 1.45, 0.06));
+      const b2 = boxGeo(V(-0.32, 1.45, -0.05), V(0.32, 2.05, 0.05));
+      const singleBlade = mergeGeometries([b1, b2], false);
+      // Blade pitch twist of 26 degrees
+      singleBlade.rotateY(THREE.MathUtils.degToRad(26));
+      // Radial angle around Z axis
+      singleBlade.rotateZ(angle);
+      bladeGeos.push(singleBlade);
+    }
+
+    const propMesh = new THREE.Mesh(mergeGeometries(bladeGeos, false), matBronze);
+    propMesh.castShadow = true;
+    P.add(propMesh);
+    R.add(P);
+
+    // 3. Balanced Rudder Aft of Propeller (z=33.5 to 35.0, y=-3.6 to 0.2)
+    const rudderGeos: THREE.BufferGeometry[] = [];
+    rudderGeos.push(boxGeo(V(-0.25, -3.6, 33.5), V(0.25, 0.2, 35.0)));
+    // Rudder stock / post up to hull
+    const stockGeo = new THREE.CylinderGeometry(0.22, 0.22, 1.4, 12);
+    stockGeo.translate(0, 0.4, 34.2);
+    rudderGeos.push(stockGeo);
+
+    this.rudder = new THREE.Mesh(mergeGeometries(rudderGeos, false), matRudder);
+    this.rudder.castShadow = true;
+    R.add(this.rudder);
+  }
+
+  update(
+    cutawayProgress: number,
+    gravityScale: number,
+    buoyancyScale: number,
+    time: number,
+    propellerRpm: number = 0
+  ) {
     if (cutawayProgress > 0.01) {
       this.cutawayPanel.position.y = -cutawayProgress * 8.5;
       this.cutawayPanel.visible = cutawayProgress < 0.98;
@@ -382,6 +455,13 @@ export class ShipModel {
       );
     } else {
       this.buoyancyArrows.visible = false;
+    }
+
+    // Propeller rotation (0 = stopped / engine off, >0 = rotating)
+    if (propellerRpm === 0) {
+      this.propeller.rotation.z = 0.45; // Stationary (engine stopped)
+    } else {
+      this.propeller.rotation.z = time * propellerRpm;
     }
 
     // Bow wake pulsing

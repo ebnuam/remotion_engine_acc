@@ -244,6 +244,7 @@ export class ShipWorld {
       color: 0xffffff,
       transparent: true,
       opacity: 0.92,
+      side: THREE.DoubleSide,
     });
     waterM.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, this.WU);
@@ -466,11 +467,11 @@ export class ShipWorld {
 
         this.ship.root.position.set(0, shipHeave, 0);
         this.ship.root.rotation.set(shipPitch, 0, shipRoll);
-        this.ship.update(0, 0, 0, t);
+        this.ship.update(0, 0, 0, t, 6.0);
       }
     } else if (shotId === 2) {
-      // Shot 2: Deck Presenter (Captain)
-      this.pier.root.visible = true;
+      // Shot 2: Mesin Mati, Tetap Mengapung (No Captain/Pier, Propeller STOPPED)
+      this.pier.root.visible = false;
       this.coin.root.visible = false;
       this.steelBlock.root.visible = false;
       this.underwaterSection.root.visible = false;
@@ -478,11 +479,11 @@ export class ShipWorld {
       for (const b of this.buoys) b.root.visible = true;
       this.seaMesh.position.set(0, 0, 0);
 
-      // Ship floating in background
+      // Ship floating in open ocean
       this.ship.root.visible = true;
-      this.ship.root.position.set(-18, shipHeave - 0.2, -6);
-      this.ship.root.rotation.set(shipPitch, 0.35, shipRoll);
-      this.ship.update(0, 0, 0, t);
+      this.ship.root.position.set(0, shipHeave, 0);
+      this.ship.root.rotation.set(shipPitch, 0, shipRoll);
+      this.ship.update(0, 0, 0, t, 0); // Propeller STOPPED (MESIN MATI)
     } else if (shotId === 3) {
       this.pier.root.visible = false;
       this.coin.root.visible = false;
@@ -552,7 +553,7 @@ export class ShipWorld {
       this.ship.root.visible = true;
       this.ship.root.position.set(0, shipHeave, sailForward);
       this.ship.root.rotation.set(shipPitch, 0, shipRoll);
-      this.ship.update(0, 0, 0, t);
+      this.ship.update(0, 0, 0, t, 7.0);
     }
 
     // ---- 7. 2.5D Characters & FX Sprites ----

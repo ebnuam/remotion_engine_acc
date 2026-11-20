@@ -54,134 +54,341 @@ export const layersAt = (f: number): { id: number; alpha: number }[] => {
   return [{ id: shotAt(f).id, alpha: 1 }];
 };
 
-// ---------------- Camera Choreography ----------------
+// ---------------- Camera Choreography (25 Micro-Shots for Retention Editing) ----------------
 export type Cam = { pos: V3; look: V3; fov: number; roll: number };
 
-export const camAt = (id: number, f: number): Cam => {
-  if (id === 1) {
-    if (f < 111) {
-      // Shot 1A (f=0..110): Close/medium center view on the large gold coin.
-      // Sinks underwater in center frame with splash and bubbles.
-      const u = clamp01(f / 110);
-      const k = glide(u);
-      const pos: V3 = [0.0, 1.6 - 1.4 * k, -5.6 - 0.6 * k];
-      const look: V3 = [0.0, 1.2 - 3.8 * k, 0.0];
-      return { pos, look, fov: 42, roll: 0 };
-    } else {
-      // Shot 1B (f=111..304): 100% Full Ship Reveal + Slow Orbit Zoom-In
-      // Starts from Ultra-Wide Shot (D=130m, 100% full ship visible from bow to stern with sea margins)
-      // Then executes a slow orbit and smooth zoom-in closer to the vessel.
-      const u = clamp01((f - 111) / 193);
-      const k = glide(u);
-      const pos: V3 = [
-        -105.0 + 45.0 * k,
-        10.5 - 2.5 * k,
-        -75.0 + 40.0 * k,
-      ];
-      const look: V3 = [
-        0.0,
-        4.0,
-        4.0 + 1.0 * k,
-      ];
-      return { pos, look, fov: 42 - 2.0 * k, roll: 0.005 * (1 - 2 * k) };
-    }
-  }
+export type MicroShot = {
+  id: number;
+  name: string;
+  start: number;
+  end: number;
+  cam: (k: number, f: number) => Cam;
+};
 
-  if (id === 2) {
-    // Shot 2: Deck Presenter (Captain)
-    // 9:16 safe framing with generous headroom (top 20-25%)
-    // Captain stands at (9.8, 3.5, 0.0), camera at y=5.2 looking at y=4.3
-    const u = clamp01((f - 304) / 360);
-    const k = glide(u);
-    const pos: V3 = [
-      5.6 + 0.3 * k,
-      5.2 - 0.2 * k,
-      -6.0 + 0.8 * k,
-    ];
-    const look: V3 = [
-      9.8,
-      4.3 - 0.1 * k,
-      0.0,
-    ];
-    return { pos, look, fov: 38 - 1.5 * k, roll: 0 };
-  }
+export const MICRO_SHOTS: MicroShot[] = [
+  // ---- Chapter 1: Koin vs Kapal (f: 0 - 304 / 4 Micro-Shots) ----
+  {
+    id: 1,
+    name: "Koin Melayang di Udara",
+    start: 0,
+    end: 70,
+    cam: (k) => ({
+      pos: [0.0, 1.8 - 0.4 * k, -5.2 - 0.4 * k],
+      look: [0.0, 1.6 - 0.6 * k, 0.0],
+      fov: 38,
+      roll: 0,
+    }),
+  },
+  {
+    id: 2,
+    name: "Koin Nyungsep Bawah Air",
+    start: 70,
+    end: 112,
+    cam: (k) => ({
+      pos: [0.0, -0.6 - 1.4 * k, -5.6 - 0.6 * k],
+      look: [0.0, -0.5 - 3.4 * k, 0.0],
+      fov: 42,
+      roll: 0,
+    }),
+  },
+  {
+    id: 3,
+    name: "Heroic Low-Angle Haluan Kapal Baja",
+    start: 112,
+    end: 205,
+    cam: (k) => ({
+      pos: [-18.0 + 4.0 * k, 1.8 + 0.8 * k, -28.0 + 3.0 * k],
+      look: [0.0, 6.0 + 0.5 * k, -14.0],
+      fov: 42,
+      roll: -0.008 + 0.008 * k,
+    }),
+  },
+  {
+    id: 4,
+    name: "Ultra-Wide Kapal Mengapung Santai",
+    start: 205,
+    end: 304,
+    cam: (k) => ({
+      pos: [-110.0 + 15.0 * k, 10.0 - 1.5 * k, -40.0 + 18.0 * k],
+      look: [0.0, 4.0, 4.0 + 1.0 * k],
+      fov: 40,
+      roll: 0,
+    }),
+  },
 
-  if (id === 3) {
-    // Shot 3: Solid Steel Block vs Hollow Hull Cavern (f=664..1156)
-    if (f < 845) {
-      // Part A (f=664..844): Center view on solid steel block plunging into water
-      const ua = clamp01((f - 664) / 180);
-      const ka = glide(ua);
-      const pos: V3 = [0.0, 3.5 - 1.8 * ka, -16.0 + 2.0 * ka];
-      const look: V3 = [0.0, 1.0 - 4.0 * ka, 0.0];
-      return { pos, look, fov: 42, roll: 0 };
-    } else {
-      // Part B (f=845..1156): Begins with full recognizable ship shape,
-      // smooth zoom-in into hollow air cavity, then gentle pull back out.
-      const ub = clamp01((f - 845) / 311);
-      let pos: V3;
-      let look: V3;
+  // ---- Chapter 2: Mesin Mati Tetap Mengapung (f: 304 - 664 / 5 Micro-Shots) ----
+  {
+    id: 5,
+    name: "High Aerial Kapal Melaju",
+    start: 304,
+    end: 375,
+    cam: (k) => ({
+      pos: [-38.0 + 8.0 * k, 26.0 - 4.0 * k, -22.0 + 8.0 * k],
+      look: [0.0, 5.0, 5.0],
+      fov: 38,
+      roll: 0,
+    }),
+  },
+  {
+    id: 6,
+    name: "Low Rear Quarter Cerobong & Menara",
+    start: 375,
+    end: 437,
+    cam: (k) => ({
+      pos: [18.0 - 3.5 * k, 6.0 + 1.5 * k, 36.0 - 6.0 * k],
+      look: [0.0, 11.0, 16.0],
+      fov: 38,
+      roll: 0.006 * (1 - 2 * k),
+    }),
+  },
+  {
+    id: 7,
+    name: "Close-Up Buritan: Baling-Baling Diam (MESIN MATI)",
+    start: 437,
+    end: 520,
+    cam: (k) => ({
+      pos: [3.8 - 0.8 * k, -1.8 - 0.2 * k, 37.0 - 1.8 * k],
+      look: [0.0, -2.4, 32.8],
+      fov: 36,
+      roll: 0,
+    }),
+  },
+  {
+    id: 8,
+    name: "Waterline Wide Kapal Tenang Tanpa Mesin",
+    start: 520,
+    end: 595,
+    cam: (k) => ({
+      pos: [-78.0 + 10.0 * k, 4.5 - 0.5 * k, 8.0 - 2.0 * k],
+      look: [0.0, 3.5, 5.0],
+      fov: 40,
+      roll: 0,
+    }),
+  },
+  {
+    id: 9,
+    name: "Low-Angle Bow Rahasia Bentuk Lambung",
+    start: 595,
+    end: 664,
+    cam: (k) => ({
+      pos: [-24.0 - 4.0 * k, 3.0 + 1.2 * k, -26.0 + 4.0 * k],
+      look: [0.0, 4.0, -5.0],
+      fov: 42,
+      roll: 0,
+    }),
+  },
 
-      if (ub < 0.45) {
-        // Phase 1 (f=845..985): Wide perspective zoom-in to air hold
-        const k1 = glide(ub / 0.45);
-        pos = [
-          -72.0 + 38.0 * k1,
-          16.0 - 11.5 * k1,
-          -30.0 + 35.0 * k1,
-        ];
-        look = [0.0, 3.8 - 0.6 * k1, 5.0];
-      } else {
-        // Phase 2 (f=985..1156): Slight pull back out for context
-        const k2 = glide((ub - 0.45) / 0.55);
-        pos = [
-          -34.0 - 14.0 * k2,
-          4.5 + 2.2 * k2,
-          5.0 - 2.0 * k2,
-        ];
-        look = [0.0, 3.2 + 0.3 * k2, 5.0];
-      }
-      return { pos, look, fov: 42 - 2 * Math.sin(ub * Math.PI), roll: 0 };
-    }
-  }
+  // ---- Chapter 3: Baja Padat vs Rongga Udara (f: 664 - 1156 / 6 Micro-Shots) ----
+  {
+    id: 10,
+    name: "Medium Center Balok Baja Padat",
+    start: 664,
+    end: 750,
+    cam: (k) => ({
+      pos: [0.0, 3.8 - 0.6 * k, -16.0 + 1.5 * k],
+      look: [0.0, 1.2, 0.0],
+      fov: 42,
+      roll: 0,
+    }),
+  },
+  {
+    id: 11,
+    name: "Tracking Balok Baja Nyungsep ke Dasar",
+    start: 750,
+    end: 845,
+    cam: (k) => ({
+      pos: [0.0, -0.8 - 2.6 * k, -15.0 + 1.5 * k],
+      look: [0.0, -1.0 - 6.0 * k, 0.0],
+      fov: 44,
+      roll: 0,
+    }),
+  },
+  {
+    id: 12,
+    name: "Cutaway Profile Lambung Membuka",
+    start: 845,
+    end: 915,
+    cam: (k) => ({
+      pos: [-65.0 + 11.0 * k, 12.0 - 2.5 * k, -15.0 + 10.0 * k],
+      look: [0.0, 3.8, 5.0],
+      fov: 42,
+      roll: 0,
+    }),
+  },
+  {
+    id: 13,
+    name: "Dramatic Zoom-In Rongga Udara Kosong",
+    start: 915,
+    end: 985,
+    cam: (k) => ({
+      pos: [-36.0 + 8.0 * k, 5.5 - 1.2 * k, 4.0 + 1.0 * k],
+      look: [0.0, 3.5, 5.0],
+      fov: 40,
+      roll: 0,
+    }),
+  },
+  {
+    id: 14,
+    name: "Internal Low-Angle Kerangka Ribs & Garis Air",
+    start: 985,
+    end: 1065,
+    cam: (k) => ({
+      pos: [-24.0 - 3.0 * k, 3.0 + 0.8 * k, -2.0 + 4.0 * k],
+      look: [0.0, 2.8, 5.0],
+      fov: 44,
+      roll: 0,
+    }),
+  },
+  {
+    id: 15,
+    name: "Pull-Back Massa Jenis Ringan",
+    start: 1065,
+    end: 1156,
+    cam: (k) => ({
+      pos: [-45.0 - 18.0 * k, 7.5 + 2.5 * k, -20.0 - 6.0 * k],
+      look: [0.0, 4.0, 4.0],
+      fov: 42,
+      roll: 0,
+    }),
+  },
 
-  if (id === 4) {
-    // Shot 4: Archimedes Buoyancy Force Dynamics (50:50 Waterline Split)
-    // Camera pulled back to broadside distance (~138m) so 100% of the 54m vessel
-    // fits horizontally in 9:16 portrait with sea margins on both sides!
-    // Moves along a gentle, majestic parallax arc.
-    const u = clamp01((f - 1156) / 524);
-    const k = glide(u);
-    const zArc = -6.0 + 12.0 * k;
-    const pos: V3 = [
-      -138.0 + 4.0 * Math.cos(k * Math.PI),
-      0.2,
-      5.0 + zArc,
-    ];
-    const look: V3 = [
-      0.0,
-      0.2,
-      5.0 + 0.5 * k,
-    ];
-    return { pos, look, fov: 42, roll: 0 };
-  }
+  // ---- Chapter 4: Gaya Apung 50:50 Split (f: 1156 - 1680 / 6 Micro-Shots) ----
+  {
+    id: 16,
+    name: "Waterline Profile Berat Kapal Menekan",
+    start: 1156,
+    end: 1230,
+    cam: (k) => ({
+      pos: [-95.0 + 8.0 * k, 2.5 - 0.5 * k, 3.0 + 2.0 * k],
+      look: [0.0, 1.8, 5.0],
+      fov: 42,
+      roll: 0,
+    }),
+  },
+  {
+    id: 17,
+    name: "Low Forward Quarter Bentuk Lebar Desak Air",
+    start: 1230,
+    end: 1315,
+    cam: (k) => ({
+      pos: [-60.0 + 8.0 * k, 1.0 + 0.5 * k, -18.0 + 6.0 * k],
+      look: [0.0, 2.5, 0.0],
+      fov: 44,
+      roll: 0,
+    }),
+  },
+  {
+    id: 18,
+    name: "Underwater Keel Panah Dorongan Air",
+    start: 1315,
+    end: 1390,
+    cam: (k) => ({
+      pos: [-75.0 - 8.0 * k, -1.8 + 0.6 * k, 6.0 - 1.0 * k],
+      look: [0.0, -1.5, 5.0],
+      fov: 42,
+      roll: 0,
+    }),
+  },
+  {
+    id: 19,
+    name: "Broadside 50:50 Gaya Apung vs Berat Kapal",
+    start: 1390,
+    end: 1480,
+    cam: (k) => ({
+      pos: [-138.0 + 4.0 * k, 0.2, 2.0 + 5.0 * k],
+      look: [0.0, 0.2, 5.0],
+      fov: 42,
+      roll: 0,
+    }),
+  },
+  {
+    id: 20,
+    name: "Dynamic Balance Kondisi Seimbang",
+    start: 1480,
+    end: 1560,
+    cam: (k) => ({
+      pos: [-110.0 + 8.0 * k, 8.0 - 1.5 * k, -12.0 + 4.0 * k],
+      look: [0.0, 2.5, 4.0],
+      fov: 40,
+      roll: 0,
+    }),
+  },
+  {
+    id: 21,
+    name: "Equilibrium Waterline Glide",
+    start: 1560,
+    end: 1680,
+    cam: (k) => ({
+      pos: [-128.0 + 10.0 * k, 1.0 + 0.8 * k, 4.0 + 2.0 * k],
+      look: [0.0, 1.5, 5.0],
+      fov: 41,
+      roll: 0,
+    }),
+  },
 
-  // Shot 5: Heroic Outro (f=1680..2010)
-  // Starts medium on Captain waving, then executes a smooth, grand zoom-out
-  // far into the distance, revealing the full ship sailing across open ocean!
-  const u = clamp01((f - 1680) / 330);
+  // ---- Chapter 5: Closing Outro Berlayar (f: 1680 - 2010 / 4 Micro-Shots) ----
+  {
+    id: 22,
+    name: "Heroic Low-Angle Bow Slices Waves",
+    start: 1680,
+    end: 1760,
+    cam: (k) => ({
+      pos: [-22.0 + 6.0 * k, 2.5 + 0.7 * k, -30.0 + 6.0 * k],
+      look: [0.0, 5.0, -12.0],
+      fov: 42,
+      roll: 0,
+    }),
+  },
+  {
+    id: 23,
+    name: "High Aerial Ocean Cruise",
+    start: 1760,
+    end: 1845,
+    cam: (k) => ({
+      pos: [-48.0 + 6.0 * k, 28.0 - 4.0 * k, -15.0 + 10.0 * k],
+      look: [0.0, 4.0, 6.0],
+      fov: 38,
+      roll: 0,
+    }),
+  },
+  {
+    id: 24,
+    name: "Parallax Track Pelampung & Kapal",
+    start: 1845,
+    end: 1920,
+    cam: (k) => ({
+      pos: [-65.0 + 7.0 * k, 7.0 - 1.0 * k, -32.0 + 10.0 * k],
+      look: [0.0, 4.0, 4.0],
+      fov: 40,
+      roll: 0,
+    }),
+  },
+  {
+    id: 25,
+    name: "Cinematic Grand Outro Wide Pull-Out",
+    start: 1920,
+    end: 2010,
+    cam: (k, f) => {
+      const sailForward = -((f - 1680) / FPS) * 1.6;
+      return {
+        pos: [-85.0 - 45.0 * k, 14.0 + 10.0 * k, -45.0 - 45.0 * k],
+        look: [0.0, 4.0, sailForward + 6.0],
+        fov: 42,
+        roll: 0.004 * (1 - 2 * k),
+      };
+    },
+  },
+];
+
+export const microShotAt = (f: number): MicroShot =>
+  MICRO_SHOTS.find((ms) => f >= ms.start && f < ms.end) ??
+  MICRO_SHOTS[MICRO_SHOTS.length - 1];
+
+export const camAt = (_id: number, f: number): Cam => {
+  const ms = microShotAt(f);
+  const u = clamp01((f - ms.start) / (ms.end - ms.start));
   const k = glide(u);
-  const pos: V3 = [
-    -26.0 - 94.0 * k,
-    8.5 + 22.0 * k,
-    -14.0 - 70.0 * k,
-  ];
-  const look: V3 = [
-    0.0,
-    5.0 + 1.0 * k,
-    -2.0 + 12.0 * k,
-  ];
-  return { pos, look, fov: 38 + 4.0 * k, roll: 0.005 * (1 - 2 * k) };
+  return ms.cam(k, f);
 };
 
 // ---------------- Depth of Field ----------------

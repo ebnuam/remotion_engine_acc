@@ -95,79 +95,6 @@ export const stageShip = (
     }
   }
 
-  // ---- Shot 2: Deck Presenter (Captain) ----
-  if (shotId === 2) {
-    let expr: Expr = "smile";
-    if (f < 450) {
-      expr = "neutral";
-    } else if (f < 560) {
-      expr = "smile";
-    } else {
-      expr = "grin";
-    }
-
-    const blink = (f % 105 >= 0 && f % 105 <= 3);
-    const captainPos = { x: 9.8, y: 3.5, z: 0.0 };
-
-    const fo: FrontOpts = {
-      mode: "stand",
-      expr,
-      blink,
-      facing: -1,
-      look: -0.2,
-    };
-
-    const key = `capt_ep1|${expr}|${blink ? "b" : "o"}|${Math.floor(f / 30)}`;
-
-    out.places.push({
-      key,
-      x: captainPos.x,
-      y: captainPos.y,
-      z: captainPos.z,
-      scale: 1.05,
-      mirror: false,
-      yaw: -0.35,
-      size: [720, 1200, 1.2],
-      draw: (p) => {
-        bodyFront(p, CAPTAIN, fo);
-        p.dot(300, 480, 8, "#fbbf24");
-        p.dot(300, 540, 8, "#fbbf24");
-        p.dot(300, 600, 8, "#fbbf24");
-        drawCaptainCap(p, 300, 260);
-      },
-    });
-
-    // Contact shadow
-    const shadowColor = "#2d2338";
-    out.fx.push({
-      key: `blob|contact|capt2`,
-      cw: 128,
-      ch: 128,
-      draw: (p) => fxContact(p, shadowColor),
-      x: captainPos.x - 0.05,
-      y: captainPos.y + 0.02,
-      z: captainPos.z - 0.05,
-      w: 0.8,
-      h: 0.6,
-      flat: true,
-      rot: 0,
-    });
-
-    out.fx.push({
-      key: `blob|tail|capt2`,
-      cw: 128,
-      ch: 256,
-      draw: (p) => fxShadow(p, shadowColor),
-      x: captainPos.x + 0.35,
-      y: captainPos.y + 0.015,
-      z: captainPos.z + 0.25,
-      w: 1.0,
-      h: 1.8,
-      flat: true,
-      rot: 0.6,
-    });
-  }
-
   // ---- Shot 3: Solid Steel Block Plunge Splash ----
   if (shotId === 3 && f < 845) {
     const sb = steelBlockStateAt(f);
@@ -187,59 +114,6 @@ export const stageShip = (
         soft: false,
       });
     }
-  }
-
-  // ---- Shot 5: Heroic Outro (Captain Waving on Ship Bow Deck) ----
-  if (shotId === 5) {
-    const wave = Math.sin((f - 1680) * 0.35);
-    const blink = (f % 95 >= 0 && f % 95 <= 3);
-    const sailForward = -((f - 1680) / 30) * 1.6;
-    const shipHeave = 0.08 * Math.sin((f / 30) * 2.0);
-    // Captain stands on the elevated forecastle deck of the sailing cargo ship
-    const captainPos = { x: 0.0, y: 5.7 + shipHeave, z: -17.5 + sailForward };
-
-    const fo: FrontOpts = {
-      mode: "stand",
-      expr: "laugh",
-      blink,
-      facing: -1,
-      wave,
-    };
-
-    const key = `capt_outro|${Math.round(wave * 5)}|${blink ? "b" : "o"}`;
-
-    out.places.push({
-      key,
-      x: captainPos.x,
-      y: captainPos.y,
-      z: captainPos.z,
-      scale: 1.1,
-      mirror: false,
-      yaw: -0.4,
-      size: [720, 1200, 1.2],
-      draw: (p) => {
-        bodyFront(p, CAPTAIN, fo);
-        p.dot(300, 480, 8, "#fbbf24");
-        p.dot(300, 540, 8, "#fbbf24");
-        p.dot(300, 600, 8, "#fbbf24");
-        drawCaptainCap(p, 300, 260);
-      },
-    });
-
-    const shadowColor = "#2d2338";
-    out.fx.push({
-      key: `blob|contact|capt5`,
-      cw: 128,
-      ch: 128,
-      draw: (p) => fxContact(p, shadowColor),
-      x: captainPos.x - 0.05,
-      y: captainPos.y + 0.02,
-      z: captainPos.z - 0.05,
-      w: 0.85,
-      h: 0.65,
-      flat: true,
-      rot: 0,
-    });
   }
 
   return out;
