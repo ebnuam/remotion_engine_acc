@@ -14,6 +14,10 @@ import { THEME } from "./theme";
 import { RhinoIllustration } from "./components/RhinoIllustration";
 import { CalloutChip, TechnicalCallout } from "./components/Callout";
 import { ScoreBoard } from "./components/ScoreBoard";
+import { JavaIslandMap } from "./components/JavaIslandMap";
+import { KrakatauTsunamiScene } from "./components/KrakatauTsunamiScene";
+import { TruckTranslocationScene } from "./components/TruckTranslocationScene";
+import { MusofaArchiveScene } from "./components/MusofaArchiveScene";
 
 export const BADAK_EP2_FRAMES = 3625;
 
@@ -120,34 +124,42 @@ const CrossSectionGround: React.FC<{
   grassColor: string;
   localFrame: number;
 }> = ({ topSoil, subSoil, deepSoil, grassColor, localFrame }) => {
-  const wave = Math.sin(localFrame * 0.08) * 6;
+  const wave = Math.sin(localFrame * 0.08) * 4;
   return (
     <svg
-      viewBox="0 0 1080 960"
-      style={{ position: "absolute", left: 0, bottom: 0, width: "100%", height: "50%" }}
+      viewBox="0 0 1080 500"
+      preserveAspectRatio="none"
+      style={{ position: "absolute", left: 0, bottom: 0, width: "100%", height: "46%", overflow: "visible" }}
     >
-      {/* Deep layer */}
-      <rect x="0" y="340" width="1080" height="620" fill={deepSoil} />
+      {/* Deep layer (Bedrock) */}
+      <rect x="0" y="240" width="1080" height="260" fill={deepSoil} />
       {/* Sub-soil layer */}
       <path
-        d={`M0 190 Q270 ${180 + wave}, 540 192 T1080 186 L1080 430 L0 430 Z`}
+        d={`M0 120 Q270 ${115 + wave}, 540 122 T1080 118 L1080 270 L0 270 Z`}
         fill={subSoil}
       />
       {/* Top soil layer */}
       <path
-        d={`M0 95 Q270 ${88 - wave * 0.5}, 540 96 T1080 92 L1080 215 L0 215 Z`}
+        d={`M0 45 Q270 ${40 - wave * 0.5}, 540 46 T1080 42 L1080 140 L0 140 Z`}
         fill={topSoil}
       />
       {/* Grass / surface strip */}
       <path
-        d={`M0 78 Q270 ${72 + wave * 0.4}, 540 80 T1080 76 L1080 108 L0 108 Z`}
+        d={`M0 0 Q270 ${-3 + wave * 0.4}, 540 2 T1080 -2 L1080 50 L0 50 Z`}
         fill={grassColor}
       />
+      {/* Dark outline at grass surface */}
+      <path
+        d={`M0 0 Q270 ${-3 + wave * 0.4}, 540 2 T1080 -2`}
+        stroke="#0F172A"
+        strokeWidth="4"
+        fill="none"
+      />
       {/* Depth ruler ticks on left */}
-      <line x1="64" y1="95" x2="64" y2="540" stroke="#1E293B" strokeWidth="3" strokeDasharray="8 6" />
-      <text x="80" y="135" fill="#1E293B" fontSize="22" fontWeight="800">0 M</text>
-      <text x="80" y="275" fill="#1E293B" fontSize="22" fontWeight="800">-5 M</text>
-      <text x="80" y="420" fill="#E2E8F0" fontSize="22" fontWeight="800">-12 M</text>
+      <line x1="60" y1="20" x2="60" y2="440" stroke="#1E293B" strokeWidth="3" strokeDasharray="8 6" />
+      <text x="76" y="45" fill="#0F172A" fontSize="18" fontWeight="900" fontFamily={THEME.font}>0 M</text>
+      <text x="76" y="170" fill="#0F172A" fontSize="18" fontWeight="900" fontFamily={THEME.font}>-5 M</text>
+      <text x="76" y="340" fill="#E2E8F0" fontSize="18" fontWeight="900" fontFamily={THEME.font}>-12 M</text>
     </svg>
   );
 };
@@ -340,19 +352,14 @@ export const BadakEp2Short: React.FC = () => {
         </g>
       </svg>
 
-      {/* Main Animated 2.5D Stage (Safe middle zone) */}
+      {/* Main Animated 2.5D Stage */}
       <div
         style={{
           position: "absolute",
-          top: "19%",
-          bottom: "28%",
-          left: 0,
-          right: 0,
+          inset: 0,
           transform: `translate(${panX}px, ${panY}px) scale(${scale})`,
-          transformOrigin: "center center",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          transformOrigin: "50% 50%",
+          overflow: "hidden",
         }}
       >
         {(shot.mode === "forest_overview" ||
@@ -363,27 +370,28 @@ export const BadakEp2Short: React.FC = () => {
             {/* Multi-layer tropical forest background */}
             <svg
               viewBox="0 0 1080 700"
-              style={{ position: "absolute", top: 60, left: 0, width: "100%" }}
+              preserveAspectRatio="none"
+              style={{ position: "absolute", bottom: "46%", left: 0, width: "100%", height: "42%" }}
             >
               {/* Far hills */}
               <path d="M0 400 Q180 260 380 330 Q580 400 780 300 Q950 220 1080 310 L1080 700 L0 700 Z" fill="#4ADE80" opacity="0.45" />
               {/* Mid hills */}
               <path d="M0 460 Q220 310 460 380 Q680 450 900 360 Q1000 310 1080 380 L1080 700 L0 700 Z" fill="#22C55E" opacity="0.65" />
               {/* Dense canopy trees (back row) */}
-              {[60,160,280,420,560,680,800,940,1050].map((x, i) => (
-                <g key={`tree-b-${i}`} transform={`translate(${x}, ${340 + (i % 3) * 15})`}>
-                  <rect x="-7" y="0" width="14" height="80" fill="#15803D" />
-                  <ellipse cx="0" cy="-10" rx={42 + (i % 2) * 12} ry="52" fill="#16A34A" stroke="#0F172A" strokeWidth="2" opacity="0.9" />
-                  <ellipse cx="0" cy="-28" rx={28 + (i % 2) * 8} ry="38" fill="#22C55E" opacity="0.85" />
+              {[60, 160, 280, 420, 560, 680, 800, 940, 1050].map((x, i) => (
+                <g key={`tree-b-${i}`} transform={`translate(${x}, ${380 + (i % 3) * 15})`}>
+                  <rect x="-7" y="0" width="14" height="120" fill="#15803D" />
+                  <ellipse cx="0" cy="-10" rx={46 + (i % 2) * 12} ry="58" fill="#16A34A" stroke="#0F172A" strokeWidth="2" opacity="0.9" />
+                  <ellipse cx="0" cy="-30" rx={32 + (i % 2) * 8} ry="42" fill="#22C55E" opacity="0.85" />
                 </g>
               ))}
               {/* Front canopy trees */}
-              {[0,120,250,390,530,660,790,920,1080].map((x, i) => (
-                <g key={`tree-f-${i}`} transform={`translate(${x}, ${420 + (i % 2) * 10})`}>
-                  <rect x="-9" y="0" width="18" height="90" fill="#166534" />
-                  <ellipse cx="0" cy="-15" rx={52 + (i % 3) * 10} ry="65" fill="#15803D" stroke="#0F172A" strokeWidth="2.5" />
-                  <ellipse cx="-12" cy="-35" rx="34" ry="42" fill="#16A34A" opacity="0.9" />
-                  <ellipse cx="14" cy="-40" rx="30" ry="38" fill="#4ADE80" opacity="0.75" />
+              {[0, 120, 250, 390, 530, 660, 790, 920, 1080].map((x, i) => (
+                <g key={`tree-f-${i}`} transform={`translate(${x}, ${460 + (i % 2) * 10})`}>
+                  <rect x="-9" y="0" width="18" height="140" fill="#166534" />
+                  <ellipse cx="0" cy="-15" rx={56 + (i % 3) * 10} ry="70" fill="#15803D" stroke="#0F172A" strokeWidth="2.5" />
+                  <ellipse cx="-12" cy="-35" rx="36" ry="46" fill="#16A34A" opacity="0.9" />
+                  <ellipse cx="14" cy="-40" rx="32" ry="42" fill="#4ADE80" opacity="0.75" />
                 </g>
               ))}
             </svg>
@@ -399,74 +407,86 @@ export const BadakEp2Short: React.FC = () => {
 
             {/* Technical depth callout arrows (SVG overlay) */}
             <svg
-              viewBox="0 0 1080 960"
-              style={{ position: "absolute", left: 0, bottom: 0, width: "100%", height: "50%", pointerEvents: "none" }}
+              viewBox="0 0 1080 500"
+              preserveAspectRatio="none"
+              style={{ position: "absolute", left: 0, bottom: 0, width: "100%", height: "46%", pointerEvents: "none" }}
             >
               {/* Surface label */}
               <TechnicalCallout
-                x1={120} y1={80}
-                x2={220} y2={60}
-                label="PERMUKAAN" unit="0 M"
+                x1={120}
+                y1={20}
+                x2={240}
+                y2={40}
+                label="PERMUKAAN TANAH"
+                unit="0 M"
                 progress={p}
                 attachSide="left"
-                boxWidth={160}
-                boxHeight={48}
-                fontSize={16}
+                boxWidth={195}
+                boxHeight={46}
+                fontSize={14}
               />
               {/* -5m label */}
               <TechnicalCallout
-                x1={120} y1={270}
-                x2={220} y2={250}
-                label="LAPISAN BAWAH" unit="-5 M"
+                x1={120}
+                y1={170}
+                x2={240}
+                y2={180}
+                label="LAPISAN SUB-SOIL"
+                unit="-5 M"
                 progress={p}
                 attachSide="left"
-                boxWidth={188}
-                boxHeight={48}
-                fontSize={15}
+                boxWidth={195}
+                boxHeight={46}
+                fontSize={14}
               />
               {/* -12m label */}
               <TechnicalCallout
-                x1={120} y1={420}
-                x2={220} y2={400}
-                label="LAPISAN DALAM" unit="-12 M"
+                x1={120}
+                y1={340}
+                x2={240}
+                y2={350}
+                label="BATUAN DASAR"
+                unit="-12 M"
                 color="#E2E8F0"
                 progress={p}
                 attachSide="left"
-                boxWidth={188}
-                boxHeight={48}
-                fontSize={15}
+                boxWidth={195}
+                boxHeight={46}
+                fontSize={14}
               />
             </svg>
 
-            {/* Organic Rhino Illustration */}
-            <div style={{ position: "absolute", bottom: "36%", left: "26%" }}>
+            {/* Organic Rhino Illustration - Centered and completely visible standing on grass */}
+            <div style={{ position: "absolute", bottom: "43.5%", left: "50%", transform: "translateX(-50%)" }}>
               <RhinoIllustration
                 frame={frame}
-                scale={0.72}
+                scale={0.84}
                 walkSpeed={shot.mode === "forest_overview" ? 1 : 0.4}
               />
             </div>
 
-            {/* ScoreBoard — persistent top-right */}
+            {/* ScoreBoard — only visible from Shot 3+ as debate emerges, positioned neatly in top right */}
             <ScoreBoard
               frame={localFrame}
-              visible={true}
+              visible={shot.id >= 3}
               highlight={shot.mode === "scientist_reject" ? "perkuat" : "none"}
+              compact={true}
             />
 
-            {/* Optional photo inset for rhino_callout */}
-            {shot.mode === "rhino_callout" && (
+            {/* Photo inset for rhino_callout (Shot 4 only) - placed neatly in upper left */}
+            {shot.mode === "rhino_callout" && shot.id === 4 && (
               <div
                 style={{
                   position: "absolute",
-                  top: "12%",
-                  right: "31%",
-                  width: 220,
-                  height: 220,
-                  borderRadius: 20,
+                  top: "22%",
+                  left: "5%",
+                  width: 140,
+                  height: 140,
+                  borderRadius: 14,
                   overflow: "hidden",
-                  border: `4px solid ${THEME.ink}`,
-                  boxShadow: "0 10px 0 rgba(15,23,42,0.25)",
+                  border: `3.5px solid ${THEME.ink}`,
+                  boxShadow: "0 6px 0 rgba(15,23,42,0.25)",
+                  zIndex: 25,
                 }}
               >
                 <Img
@@ -479,8 +499,8 @@ export const BadakEp2Short: React.FC = () => {
             {shot.note && (
               <CalloutChip
                 label={shot.note}
-                top="8%"
-                left="6%"
+                top="22%"
+                left={shot.mode === "rhino_callout" && shot.id === 4 ? "20%" : "5%"}
                 accent={shot.mode === "scientist_reject" ? THEME.accent.danger : THEME.accent.success}
                 progress={p}
               />
@@ -489,238 +509,40 @@ export const BadakEp2Short: React.FC = () => {
         )}
 
         {shot.mode === "map_route" && (
-          <div style={{ position: "relative", width: "100%", height: "100%", padding: "30px 36px" }}>
-            {/* Ocean background */}
-            <div style={{
-              position: "absolute", inset: 0,
-              background: "linear-gradient(180deg, #BAE6FD 0%, #7DD3FC 100%)",
-              borderRadius: 0,
-            }} />
-            {/* Wave pattern */}
-            <svg viewBox="0 0 1080 1920" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.3 }}>
-              {[200, 350, 500, 650, 800, 950, 1100].map((y, i) => (
-                <path key={i}
-                  d={`M0 ${y} Q180 ${y - 18} 360 ${y} Q540 ${y + 18} 720 ${y} Q900 ${y - 18} 1080 ${y}`}
-                  stroke="#0284C7" strokeWidth="2.5" fill="none" opacity="0.5"
-                />
-              ))}
-            </svg>
-
-            {/* Java Island SVG — full detailed map */}
-            <svg viewBox="0 0 980 580" style={{ width: "100%", height: "100%", position: "relative", zIndex: 2 }}>
-              {/* Java landmass — detailed coastal path */}
-              <path
-                d={`M 80 230
-                   Q 60 212 68 196
-                   Q 86 188 108 202
-                   Q 132 174 198 174
-                   Q 265 182 348 172
-                   Q 416 152 490 155
-                   Q 532 178 578 174
-                   Q 660 164 752 178
-                   Q 820 192 836 220
-                   Q 834 258 798 258
-                   Q 745 265 648 252
-                   Q 578 268 510 254
-                   Q 448 268 372 258
-                   Q 310 268 250 254
-                   Q 198 272 148 258
-                   Q 108 258 80 230 Z`}
-                fill="#22C55E"
-                stroke="#0F172A"
-                strokeWidth="5"
-                strokeLinejoin="round"
-              />
-              {/* Island interior shading */}
-              <path
-                d={`M 108 258 Q 148 258 198 272 Q 250 254 310 268 Q 372 258 448 268 Q 510 254 578 268 Q 648 252 745 265 Q 798 258 834 258 Q 810 242 756 248 Q 648 236 568 248 Q 460 236 384 248 Q 280 238 200 248 Q 142 242 108 258 Z`}
-                fill="#16A34A"
-                opacity="0.7"
-              />
-              {/* Volcanic peaks */}
-              <g fill="#15803D" stroke="#0F172A" strokeWidth="3">
-                <polygon points="148,215 168,175 188,215" />
-                <polygon points="208,215 228,186 248,215" />
-                <polygon points="358,215 383,165 408,215" />
-                <polygon points="428,220 453,174 478,220" />
-                <polygon points="618,215 648,160 678,215" />
-                <polygon points="708,220 733,174 758,220" />
-              </g>
-
-              {/* Ocean wave accents */}
-              <g stroke="#38BDF8" strokeWidth="2.5" opacity="0.65" fill="none">
-                <path d="M38 72 Q68 62 98 72 T158 72" />
-                <path d="M718 70 Q748 60 778 70 T838 70" />
-                <path d="M98 395 Q128 385 158 395 T218 395" />
-                <path d="M678 395 Q708 385 738 395 T798 395" />
-              </g>
-
-              {/* Animated route glow */}
-              <path
-                d="M 90 212 Q 450 72 810 222"
-                stroke="#FEF08A"
-                strokeWidth="18"
-                opacity="0.5"
-                fill="none"
-                strokeLinecap="round"
-              />
-              {/* Animated dashed route */}
-              <path
-                d="M 90 212 Q 450 72 810 222"
-                stroke="#F97316"
-                strokeWidth="7"
-                strokeDasharray="16 10"
-                strokeDashoffset={-frame * 3.5}
-                fill="none"
-                strokeLinecap="round"
-              />
-              {/* Solid progress overlay */}
-              <path
-                d="M 90 212 Q 450 72 810 222"
-                stroke="#EA580C"
-                strokeWidth="5"
-                strokeDasharray="1050"
-                strokeDashoffset={1050 * (1 - p)}
-                fill="none"
-                strokeLinecap="round"
-              />
-
-              {/* Distance badge at apex */}
-              <g transform="translate(448, 108)">
-                <rect x="-108" y="-24" width="216" height="48" rx="13"
-                  fill="#FFFFFF" stroke="#0F172A" strokeWidth="3.5"
-                  filter="drop-shadow(0 4px 0 #0F172A)"
-                />
-                <text x="0" y="-2" textAnchor="middle" fontFamily="sans-serif" fontWeight="900" fontSize="18" fill="#EA580C">
-                  RUTE: ~1.000 KM
-                </text>
-                <text x="0" y="16" textAnchor="middle" fontFamily="sans-serif" fontWeight="700" fontSize="13" fill="#64748B">
-                  UJUNG KULON - ALAS PURWO
-                </text>
-              </g>
-
-              {/* PIN 1: TN UJUNG KULON (Banten, west) */}
-              <g transform="translate(90, 212)">
-                <circle cx="0" cy="0" r="16" fill="#0284C7" stroke="#0F172A" strokeWidth="4" />
-                <circle cx="0" cy="0" r="6" fill="#FFFFFF" />
-                <path d="M 0 -8 L 0 -52" stroke="#0F172A" strokeWidth="4" />
-                <circle cx="0" cy="-52" r="14" fill="#EF4444" stroke="#0F172A" strokeWidth="3.5" />
-                <g transform="translate(-10, -82)">
-                  <rect x="-88" y="-14" width="176" height="30" rx="9"
-                    fill="#FFFFFF" stroke="#0F172A" strokeWidth="3"
-                    filter="drop-shadow(0 3px 0 #0F172A)"
-                  />
-                  <text x="0" y="7" textAnchor="middle" fontFamily="sans-serif" fontWeight="900" fontSize="13" fill="#0284C7">
-                    TN UJUNG KULON
-                  </text>
-                </g>
-              </g>
-
-              {/* PIN 2: TN ALAS PURWO (Banyuwangi, east) */}
-              <g transform="translate(810, 222)">
-                <circle cx="0" cy="0" r="16" fill="#F97316" stroke="#0F172A" strokeWidth="4" />
-                <circle cx="0" cy="0" r="6" fill="#FFFFFF" />
-                <path d="M 0 -8 L 0 -52" stroke="#0F172A" strokeWidth="4" />
-                <circle cx="0" cy="-52" r="14" fill="#22C55E" stroke="#0F172A" strokeWidth="3.5" />
-                <g transform="translate(0, -82)">
-                  <rect x="-82" y="-14" width="164" height="30" rx="9"
-                    fill="#FFFFFF" stroke="#0F172A" strokeWidth="3"
-                    filter="drop-shadow(0 3px 0 #0F172A)"
-                  />
-                  <text x="0" y="7" textAnchor="middle" fontFamily="sans-serif" fontWeight="900" fontSize="13" fill="#15803D">
-                    TN ALAS PURWO
-                  </text>
-                </g>
-              </g>
-
-              {/* Compass rose */}
-              <g transform="translate(900, 110)">
-                <circle cx="0" cy="0" r="30" fill="#FFFFFF" stroke="#0F172A" strokeWidth="3" opacity="0.9" />
-                <text x="0" y="-14" textAnchor="middle" fontFamily="sans-serif" fontWeight="900" fontSize="14" fill="#0F172A">U</text>
-                <text x="0" y="22" textAnchor="middle" fontFamily="sans-serif" fontWeight="700" fontSize="12" fill="#64748B">S</text>
-                <text x="18" y="5" textAnchor="middle" fontFamily="sans-serif" fontWeight="700" fontSize="12" fill="#64748B">T</text>
-                <text x="-18" y="5" textAnchor="middle" fontFamily="sans-serif" fontWeight="700" fontSize="12" fill="#64748B">B</text>
-                <line x1="0" y1="-22" x2="0" y2="22" stroke="#0F172A" strokeWidth="1.5" />
-                <line x1="-22" y1="0" x2="22" y2="0" stroke="#0F172A" strokeWidth="1.5" />
-              </g>
-            </svg>
-
-            {shot.note && (
-              <CalloutChip label={shot.note} top="6%" left="6%" progress={p} accent={THEME.accent.warning} />
-            )}
-          </div>
+          <JavaIslandMap
+            frame={frame}
+            progress={p}
+            shotId={shot.id}
+          />
         )}
 
         {shot.mode === "krakatau_tsunami" && (
-          <div style={{ position: "relative", width: "100%", height: "100%" }}>
-            <svg viewBox="0 0 1080 760" style={{ width: "100%", height: "100%" }}>
-              {/* Sunda Strait sea */}
-              <rect x="0" y="360" width="1080" height="400" fill="#0284C7" />
-              {/* Anak Krakatau cone */}
-              <polygon points="340,370 500,150 660,370" fill="#57534E" stroke="#0F172A" strokeWidth="5" />
-              {/* Plume */}
-              <circle cx="500" cy="115" r={35 + p * 35} fill="#E2E8F0" opacity="0.85" />
-              {/* Tsunami wave moving right */}
-              <path
-                d={`M${120 + p * 420} 470 Q${220 + p * 420} 320, ${340 + p * 420} 470 L${340 + p * 420} 560 L${120 + p * 420} 560 Z`}
-                fill="#38BDF8"
-                stroke="#0F172A"
-                strokeWidth="4"
-              />
-            </svg>
-            {shot.note && <CalloutPill label={shot.note} top="8%" left="6%" accent="#0284C7" progress={p} />}
-          </div>
+          <KrakatauTsunamiScene
+            frame={frame}
+            localFrame={localFrame}
+            progress={p}
+            note={shot.note}
+          />
         )}
 
         {shot.mode === "truck_stress" && (
-          <div style={{ position: "relative", width: "100%", height: "100%" }}>
-            <CrossSectionGround
-              topSoil="#94A3B8"
-              subSoil="#64748B"
-              deepSoil="#334155"
-              grassColor="#84CC16"
-              localFrame={localFrame}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: "42%",
-                left: "20%",
-                transform: `translateY(${Math.sin(frame * 0.9) * 5}px)`,
-              }}
-            >
-              <svg viewBox="0 0 520 220" style={{ width: 560, height: 240 }}>
-                <rect x="30" y="35" width="290" height="125" rx="14" fill="#F8FAFC" stroke="#0F172A" strokeWidth="5" />
-                <rect x="320" y="65" width="130" height="95" rx="14" fill="#F59E0B" stroke="#0F172A" strokeWidth="5" />
-                <circle cx="115" cy="172" r="32" fill="#1E293B" stroke="#0F172A" strokeWidth="4" />
-                <circle cx="385" cy="172" r="32" fill="#1E293B" stroke="#0F172A" strokeWidth="4" />
-              </svg>
-            </div>
-            {shot.note && <CalloutPill label={shot.note} top="8%" left="6%" accent="#DC2626" progress={p} />}
-          </div>
+          <TruckTranslocationScene
+            frame={frame}
+            localFrame={localFrame}
+            progress={p}
+            shotId={shot.id}
+            note={shot.note}
+          />
         )}
 
         {shot.mode === "musofa_flatline" && (
-          <div style={{ position: "relative", width: "100%", height: "100%", padding: "60px 64px" }}>
-            <div
-              style={{
-                backgroundColor: "#FFFDF7",
-                border: "4px solid #0F172A",
-                borderRadius: 24,
-                padding: 36,
-                boxShadow: "0 12px 0 rgba(15,23,42,0.2)",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <RhinoSilhouetteBadge scale={0.75} tint="#64748B" stepPhase={0} />
-                <div style={{ fontSize: 36, fontWeight: 900, color: "#0F172A" }}>KASUS MUSOFA</div>
-              </div>
-              <svg viewBox="0 0 800 140" style={{ width: "100%", height: 150, marginTop: 20 }}>
-                <line x1="20" y1="70" x2="780" y2="70" stroke="#DC2626" strokeWidth="6" />
-              </svg>
-            </div>
-            {shot.note && <CalloutPill label={shot.note} top="4%" right="6%" accent="#DC2626" progress={p} />}
-          </div>
+          <MusofaArchiveScene
+            frame={frame}
+            localFrame={localFrame}
+            progress={p}
+            shotId={shot.id}
+            note={shot.note}
+          />
         )}
 
         {shot.mode === "distance_compare" && (

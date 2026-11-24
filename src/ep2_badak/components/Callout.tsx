@@ -83,7 +83,7 @@ export const TechnicalCallout: React.FC<CalloutProps> = ({
         fill={color}
       />
       {/* Label box */}
-      {lineProgress > 0.9 && (
+      {progress > 0.1 && (
         <>
           <rect
             x={bx}
