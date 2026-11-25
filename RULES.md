@@ -82,3 +82,22 @@ Susun tabel storyboard micro-shot (durasi 2–3 detik per shot, variasi sudut ka
    - Micro-shot **2–3 detik**; tidak ada hold statis $\ge 4$ frame (selalu beri creeping push-in `0.15–0.35%/f` via `pushK()`).
    - Gunakan `frameObject9x16()` / `calcCameraDistance()` dari `src/shared/` agar karakter/objek tidak terpotong tepi layar.
    - Tambahkan properti foreground seperlunya di luar garis pandang subjek (`blocksAnySightLine`).
+
+---
+
+## 4. PIPELINE AUDIO OFFLINE (`templates/audio-py/` via `.venv-audio/`)
+1. **Virtual Environment Terisolasi:** Selalu jalankan skrip audio memakai `.venv-audio/bin/python -B` (flag `-B` mencegah `__pycache__/`; `.venv-audio/` sudah di-ignore di `.gitignore` dan dilarang di-commit atau menginstal `scipy`/`numpy` ke Python sistem).
+2. **Perintah Standar Mix & Loudness Episode:**
+   ```bash
+   .venv-audio/bin/python -B templates/audio-py/mix_audio.py \
+     --voice public/audio/<vo_file> \
+     --words src/ep<N>_<topik>/words.json \
+     --shots /tmp/ep<N>_qa/shots.json \
+     --preset curious_doc \
+     --duck-db -4.5 \
+     --target-lufs -14.5 \
+     --ceil-dbtp -1.2 \
+     --out-dir /tmp/ep<N>_audio \
+     --aac
+   ```
+3. **Standar Teknis Shorts/Reels:** Target integrated loudness **`-14.5 LUFS`** (rentang aman `-14.0` s/d `-15.0 LUFS`), True Peak **$\le -1.2\text{ dBTP}$** (nol clipping), dan ducking otomatis berbasis `words.json` (`s`/`e`, `start`/`end`, atau Whisper `segments`/`words`; fallback VAD amplop bila tanpa `words.json`).
