@@ -31,6 +31,8 @@ Options:
   --entry <path>       Remotion entry file (or env BRIDGE_ENTRY, default: src/index.ts)
   --public-dir <path>  Public directory (default: public)
   --gl <backend>       GL backend: swangle | angle | swiftshader | egl | vulkan (or env GL_BACKEND, default: swangle)
+  --mode <name>        Optional Stage25D post.mode inputProp: draft | look | final
+  --props <json>       Optional JSON inputProps passed to selectComposition/renderStill
   --browser <path>     Chromium executable path (or env REMOTION_BROWSER_EXECUTABLE; auto-detected if omitted)
   --timeout <ms>       Per-frame timeout ms (default: 180000)
   --dry-run            Validate config and print resolved command without bundling or rendering
@@ -49,6 +51,8 @@ function parseArgs(argv) {
     entry: process.env.BRIDGE_ENTRY || "src/index.ts",
     publicDir: "public",
     gl: process.env.GL_BACKEND || "swangle",
+    mode: "",
+    propsJson: "",
     browser: process.env.REMOTION_BROWSER_EXECUTABLE || "",
     timeout: 180000,
     dryRun: false,
@@ -81,6 +85,10 @@ function parseArgs(argv) {
       opts.publicDir = argv[++i];
     } else if (a === "--gl" && i + 1 < argv.length) {
       opts.gl = argv[++i];
+    } else if (a === "--mode" && i + 1 < argv.length) {
+      opts.mode = argv[++i];
+    } else if (a === "--props" && i + 1 < argv.length) {
+      opts.propsJson = argv[++i];
     } else if (a === "--browser" && i + 1 < argv.length) {
       opts.browser = argv[++i];
     } else if (a === "--timeout" && i + 1 < argv.length) {
@@ -141,6 +149,18 @@ function validate(opts) {
   if (!fs.existsSync(publicAbs)) {
     throw new Error(`Public directory not found: ${publicAbs}`);
   }
+  const allowedModes = ["draft", "look", "final"];
+  if (opts.mode && !allowedModes.includes(opts.mode)) {
+    throw new Error(`Invalid --mode: ${opts.mode}. Allowed: ${allowedModes.join(", ")}`);
+  }
+  let inputProps = {};
+  if (opts.propsJson) {
+    inputProps = JSON.parse(opts.propsJson);
+  }
+  if (opts.mode) {
+    inputProps = { ...inputProps, post: { ...(inputProps.post || {}), mode: opts.mode } };
+  }
+  const hasInputProps = Object.keys(inputProps).length > 0;
   const browserExecutable = detectLinuxBrowser(opts.browser);
   return {
     ...opts,
@@ -149,6 +169,7 @@ function validate(opts) {
     publicAbs,
     outDirAbs: path.resolve(opts.outDir),
     browserExecutable,
+    inputProps: hasInputProps ? inputProps : undefined,
   };
 }
 
@@ -174,6 +195,7 @@ async function main() {
       scale: cfg.scale,
       format: cfg.format,
       quality: cfg.format === "jpeg" ? cfg.quality : undefined,
+      inputProps: cfg.inputProps || null,
       browserExecutable: cfg.browserExecutable || "remotion-bundled-chrome-headless-shell",
       remotionTmp: process.env.REMOTION_TMP || null,
       frames: cfg.parsedFrames,
@@ -201,6 +223,7 @@ async function main() {
     serveUrl,
     id: cfg.comp,
     chromiumOptions,
+    ...(cfg.inputProps ? { inputProps: cfg.inputProps } : {}),
     ...(cfg.browserExecutable ? { browserExecutable: cfg.browserExecutable } : {}),
   };
   const composition = await selectComposition(selectOpts);
@@ -220,6 +243,7 @@ async function main() {
       serveUrl,
       frame: f,
       output: outFile,
+      ...(cfg.inputProps ? { inputProps: cfg.inputProps } : {}),
       imageFormat: cfg.format,
       ...(cfg.format === "jpeg" ? { jpegQuality: cfg.quality } : {}),
       scale: cfg.scale,
