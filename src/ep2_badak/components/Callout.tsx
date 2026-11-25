@@ -2,33 +2,25 @@ import React from "react";
 import { interpolate } from "remotion";
 import { THEME } from "../theme";
 
-/**
- * Technical Callout Component — @ceritateknik style
- * Renders an SVG line + anchor dot + label box pointing from an anchor to a label.
- *
- * Usage: Wrap inside an SVG with the same viewBox as the scene.
- */
-
 interface CalloutProps {
-  /** Anchor point (tip of the arrow / where the line starts) */
   x1: number;
   y1: number;
-  /** Label box center position */
   x2: number;
   y2: number;
   label: string;
   unit?: string;
   color?: string;
-  /** 0–1 progress for entry animation */
   progress?: number;
-  /** Side of label box the line attaches to: "left" | "right" | "top" | "bottom" */
   attachSide?: "left" | "right" | "top" | "bottom";
-  /** Box width in SVG units */
   boxWidth?: number;
   boxHeight?: number;
   fontSize?: number;
 }
 
+/**
+ * Technical Callout Component — @ceritateknik style (1080x1920 mobile-readable scale)
+ * Crisp 2.5px leader line + anchor dot + padded white label card.
+ */
 export const TechnicalCallout: React.FC<CalloutProps> = ({
   x1,
   y1,
@@ -39,69 +31,65 @@ export const TechnicalCallout: React.FC<CalloutProps> = ({
   color = THEME.callout.line,
   progress = 1,
   attachSide = "left",
-  boxWidth = 180,
-  boxHeight = unit ? 52 : 36,
-  fontSize = 18,
+  boxWidth = 280,
+  boxHeight = unit ? 72 : 52,
+  fontSize = 24,
 }) => {
-  const opacity = interpolate(progress, [0, 0.3], [0, 1], {
+  const opacity = interpolate(progress, [0, 0.25], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const lineProgress = interpolate(progress, [0.1, 0.6], [0, 1], {
+  const lineProgress = interpolate(progress, [0.05, 0.5], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Interpolate line endpoint from anchor toward label
   const lx2 = x1 + (x2 - x1) * lineProgress;
   const ly2 = y1 + (y2 - y1) * lineProgress;
 
-  // Label box origin (top-left)
   let bx = x2;
   let by = y2 - boxHeight / 2;
   if (attachSide === "right") bx = x2 - boxWidth;
-  if (attachSide === "top") { bx = x2 - boxWidth / 2; by = y2; }
-  if (attachSide === "bottom") { bx = x2 - boxWidth / 2; by = y2 - boxHeight; }
+  if (attachSide === "top") {
+    bx = x2 - boxWidth / 2;
+    by = y2;
+  }
+  if (attachSide === "bottom") {
+    bx = x2 - boxWidth / 2;
+    by = y2 - boxHeight;
+  }
 
   return (
     <g opacity={opacity}>
-      {/* Leader line */}
       <line
         x1={x1}
         y1={y1}
         x2={lx2}
         y2={ly2}
         stroke={color}
-        strokeWidth={THEME.callout.lineWidth}
+        strokeWidth={3}
         strokeLinecap="round"
       />
-      {/* Anchor dot */}
-      <circle
-        cx={x1}
-        cy={y1}
-        r={THEME.callout.dot / 2}
-        fill={color}
-      />
-      {/* Label box */}
-      {progress > 0.1 && (
+      <circle cx={x1} cy={y1} r={6} fill={color} />
+      {progress > 0.08 && (
         <>
           <rect
             x={bx}
             y={by}
             width={boxWidth}
             height={boxHeight}
-            rx={8}
+            rx={12}
             fill={THEME.callout.bg}
             stroke={color}
-            strokeWidth={1.5}
-            filter="drop-shadow(0 2px 0 rgba(15,23,42,0.18))"
+            strokeWidth={3}
+            filter="drop-shadow(0 4px 0 rgba(15,23,42,0.22))"
           />
           <text
             x={bx + boxWidth / 2}
-            y={by + (unit ? fontSize + 4 : boxHeight / 2 + fontSize * 0.35)}
+            y={by + (unit ? fontSize + 10 : boxHeight / 2 + fontSize * 0.36)}
             textAnchor="middle"
             fontFamily={THEME.font}
-            fontWeight={800}
+            fontWeight={900}
             fontSize={fontSize}
             fill={color}
           >
@@ -110,12 +98,12 @@ export const TechnicalCallout: React.FC<CalloutProps> = ({
           {unit && (
             <text
               x={bx + boxWidth / 2}
-              y={by + fontSize * 2 + 4}
+              y={by + fontSize * 1.95 + 10}
               textAnchor="middle"
               fontFamily={THEME.font}
-              fontWeight={600}
-              fontSize={fontSize * 0.75}
-              fill={THEME.inkMuted}
+              fontWeight={800}
+              fontSize={Math.max(18, Math.round(fontSize * 0.8))}
+              fill={THEME.inkLight}
             >
               {unit}
             </text>
@@ -126,18 +114,14 @@ export const TechnicalCallout: React.FC<CalloutProps> = ({
   );
 };
 
-/**
- * Div-based callout pill (for use outside SVG context)
- * Arrow line rendered as a rotated div border
- */
 interface DivCalloutProps {
   label: string;
   subLabel?: string;
   accent?: string;
-  top: string;
-  left?: string;
-  right?: string;
-  bottom?: string;
+  top?: number | string;
+  left?: number | string;
+  right?: number | string;
+  bottom?: number | string;
   progress?: number;
 }
 
@@ -151,7 +135,7 @@ export const CalloutChip: React.FC<DivCalloutProps> = ({
   bottom,
   progress = 1,
 }) => {
-  const pop = interpolate(progress, [0, 0.25], [0.82, 1], {
+  const pop = interpolate(progress, [0, 0.25], [0.85, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -170,24 +154,25 @@ export const CalloutChip: React.FC<DivCalloutProps> = ({
         bottom,
         opacity: op,
         transform: `scale(${pop})`,
-        transformOrigin: left ? "left center" : "right center",
+        transformOrigin: left !== undefined ? "left center" : "right center",
         backgroundColor: THEME.callout.bg,
-        border: `3px solid ${accent}`,
-        borderRadius: 14,
-        padding: "10px 20px",
-        boxShadow: `0 6px 0 rgba(15, 23, 42, 0.2)`,
+        border: `4px solid ${accent}`,
+        borderRadius: 18,
+        padding: "12px 24px",
+        boxShadow: "0 8px 0 rgba(15, 23, 42, 0.22)",
         zIndex: 25,
         display: "inline-flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 2,
+        gap: 4,
+        pointerEvents: "none",
       }}
     >
       <span
         style={{
           fontFamily: THEME.font,
           fontWeight: 900,
-          fontSize: 28,
+          fontSize: 30,
           color: accent,
           letterSpacing: 0.6,
           textTransform: "uppercase",
@@ -200,11 +185,12 @@ export const CalloutChip: React.FC<DivCalloutProps> = ({
         <span
           style={{
             fontFamily: THEME.font,
-            fontWeight: 700,
-            fontSize: 18,
+            fontWeight: 800,
+            fontSize: 22,
             color: THEME.inkLight,
             textTransform: "uppercase",
             letterSpacing: 0.4,
+            whiteSpace: "nowrap",
           }}
         >
           {subLabel}

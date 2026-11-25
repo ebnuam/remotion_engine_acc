@@ -11,319 +11,242 @@ interface KrakatauTsunamiSceneProps {
 }
 
 /**
- * Scene 3: Sunda Strait Cross-Section, Anak Krakatau Flank Collapse & Tsunami
- * 2.5D Technical Cross-Section @ceritateknik style
- * Daytime bright aesthetic: turquoise seawater cross-section, volcanic cone,
- * animated flank collapse with displacement arrows pushing tsunami waves toward Ujung Kulon.
+ * Scene 3: Sunda Strait Cross-Section, Anak Krakatau Flank Collapse & Tsunami (1080x1920)
+ * Bright daytime aesthetic with bold cause-effect arrows, clean mobile-readable labels,
+ * and zero fabricated numeric stats.
  */
 export const KrakatauTsunamiScene: React.FC<KrakatauTsunamiSceneProps> = ({
   frame,
-  localFrame,
   progress,
-  note,
 }) => {
-  // Wave animation
-  const waveCycle = (frame * 5) % 360;
-  // Flank slide animation
-  const slideProgress = interpolate(progress, [0.15, 0.75], [0, 24], {
+  const slideProgress = interpolate(progress, [0.1, 0.8], [0, 32], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  // Tsunami wave progression from Krakatau (x~340) toward Ujung Kulon (x~880)
-  const waveX = interpolate(progress, [0.1, 0.95], [380, 840], {
+  const waveX = interpolate(progress, [0.05, 0.95], [490, 810], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
-      {/* Sky is inherited from daylight gradient */}
-
-      {/* Main Cross-Section SVG */}
+    <div style={{ position: "relative", width: 1080, height: 1920, overflow: "hidden" }}>
       <svg
-        viewBox="0 0 1080 820"
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible" }}
+        viewBox="0 0 1080 1920"
+        style={{ position: "absolute", inset: 0, width: 1080, height: 1920 }}
       >
         <defs>
-          {/* Seawater gradient */}
-          <linearGradient id="seaWaterGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.9" />
-            <stop offset="35%" stopColor="#0284C7" stopOpacity="0.92" />
-            <stop offset="100%" stopColor="#0369A1" stopOpacity="0.95" />
+          <linearGradient id="sundaSeaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#38BDF8" />
+            <stop offset="45%" stopColor="#0284C7" />
+            <stop offset="100%" stopColor="#0369A1" />
           </linearGradient>
-
-          {/* Magma glow */}
-          <radialGradient id="magmaGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#EF4444" />
-            <stop offset="70%" stopColor="#F97316" />
-            <stop offset="100%" stopColor="#F59E0B" stopOpacity="0" />
-          </radialGradient>
         </defs>
 
-        {/* ================= 1. SEABED / OCEAN FLOOR ================= */}
-        {/* Deep tectonic trench */}
+        {/* ================= 1. SEABED / CRUST (Y=1080..1920) ================= */}
+        {/* Subtitles sit cleanly over dark seafloor crust below Y=1210 */}
         <path
-          d="M 0 540 
-             Q 180 560 300 580 
-             L 360 480 
-             L 480 490 
-             L 540 600 
-             Q 720 590 880 540 
-             L 980 430 
-             L 1080 430 
-             L 1080 820 
-             L 0 820 Z"
+          d="M 0 1060 Q 220 1090 420 1120 L 560 1160 Q 740 1140 900 1040 L 1080 1040 L 1080 1920 L 0 1920 Z"
           fill="#334155"
           stroke="#0F172A"
-          strokeWidth="4"
+          strokeWidth="5"
         />
-        {/* Bedrock strata line */}
         <path
-          d="M 0 650 Q 540 680 1080 640 L 1080 820 L 0 820 Z"
+          d="M 0 1210 Q 540 1245 1080 1200 L 1080 1920 L 0 1920 Z"
           fill="#1E293B"
         />
 
-        {/* ================= 2. SEAWATER CROSS-SECTION ================= */}
+        {/* ================= 2. SEAWATER CROSS-SECTION (Y=880..1150) ================= */}
         <path
-          d={`M 0 380 
-             Q 180 ${376 + Math.sin(frame * 0.1) * 4} 340 380 
-             L 340 480 
-             L 480 490 
-             L 540 600 
-             Q 720 590 880 540 
-             L 980 430 
-             L 1080 430 
-             L 1080 380 
-             Q 1030 380 980 380 
-             Z`}
-          fill="url(#seaWaterGrad)"
-          stroke="#0284C7"
-          strokeWidth="2"
+          d={`M 0 880
+             Q 160 ${874 + Math.sin(frame * 0.12) * 5} 320 880
+             L 910 880
+             L 900 1040
+             Q 740 1140 560 1160
+             L 420 1120
+             L 0 1060 Z`}
+          fill="url(#sundaSeaGrad)"
         />
+        <line
+          x1="0"
+          y1="880"
+          x2="910"
+          y2="880"
+          stroke="#0284C7"
+          strokeWidth="4"
+          strokeDasharray="12 8"
+        />
+        <rect x="465" y="968" width="255" height="40" rx="10" fill="rgba(255,253,247,0.92)" stroke="#0284C7" strokeWidth="2.5" />
+        <text
+          x="592"
+          y="996"
+          textAnchor="middle"
+          fontFamily={THEME.font}
+          fontWeight="900"
+          fontSize="21"
+          fill="#0369A1"
+        >
+          PERMUKAAN LAUT
+        </text>
 
-        {/* ================= 3. RIGHT SIDE: UJUNG KULON COASTLINE ================= */}
-        {/* Landmass */}
+        {/* ================= 3. RIGHT COASTLINE: TN UJUNG KULON ================= */}
         <path
-          d="M 940 430 Q 970 380 990 350 L 1080 350 L 1080 820 L 940 820 Z"
+          d="M 870 1060 Q 905 920 935 840 L 1080 840 L 1080 1920 L 870 1920 Z"
           fill="#16A34A"
           stroke="#0F172A"
-          strokeWidth="4"
+          strokeWidth="5"
         />
-        {/* Sandy beach */}
         <path
-          d="M 940 430 Q 960 395 980 380 L 990 380 Q 965 410 940 430 Z"
+          d="M 870 1060 Q 905 920 935 840 L 965 840 Q 925 935 895 1060 Z"
           fill="#FDE047"
-          stroke="#0F172A"
-          strokeWidth="2"
         />
-        {/* Jungle trees on Ujung Kulon coast */}
-        {[980, 1010, 1040, 1070].map((tx, idx) => (
-          <g key={idx} transform={`translate(${tx}, 350)`}>
-            <rect x="-4" y="0" width="8" height="35" fill="#15803D" />
-            <ellipse cx="0" cy="-15" rx="20" ry="24" fill="#22C55E" stroke="#0F172A" strokeWidth="2" />
+        {/* Jungle Canopy */}
+        {[945, 990, 1040].map((tx, idx) => (
+          <g key={idx} transform={`translate(${tx}, 840)`}>
+            <rect x="-6" y="-10" width="12" height="45" fill="#15803D" />
+            <ellipse cx="0" cy="-35" rx="34" ry="38" fill="#22C55E" stroke="#0F172A" strokeWidth="3.5" />
           </g>
         ))}
-        {/* Coastal label box */}
-        <g transform="translate(980, 290)">
-          <rect
-            x="-85"
-            y="-16"
-            width="170"
-            height="34"
-            rx="9"
-            fill="#FFFDF7"
-            stroke="#16A34A"
-            strokeWidth="3"
-            filter="drop-shadow(0 3px 0 rgba(15,23,42,0.2))"
-          />
-          <text
-            x="0"
-            y="6"
-            textAnchor="middle"
-            fontFamily={THEME.font}
-            fontWeight="900"
-            fontSize="12"
-            fill="#15803D"
-          >
-            TN UJUNG KULON
-          </text>
-        </g>
 
         {/* ================= 4. GUNUNG ANAK KRAKATAU ================= */}
-        {/* Submarine & Subaerial Volcano Base */}
         <g>
-          {/* Main Volcano Cone Body */}
+          {/* Main Cone */}
           <polygon
-            points="120,480 270,170 320,170 420,480"
+            points="70,1080 235,595 305,595 450,1095"
             fill="#475569"
             stroke="#0F172A"
             strokeWidth="5"
             strokeLinejoin="round"
           />
+          {/* Magma Conduit */}
+          <path d="M 258 595 L 254 1080 L 284 1080 L 280 595 Z" fill="#EF4444" />
+          <ellipse cx="270" cy="595" rx="34" ry="12" fill="#EF4444" stroke="#0F172A" strokeWidth="4" />
+          <ellipse cx="270" cy="595" rx="18" ry="6" fill="#FDE047" />
 
-          {/* Submarine lower slope */}
-          <polygon
-            points="70,550 120,480 420,480 480,560"
-            fill="#334155"
-            stroke="#0F172A"
-            strokeWidth="4"
-          />
-
-          {/* Magma conduit / core */}
-          <path
-            d="M 285 170 L 290 520 L 305 520 L 305 170 Z"
-            fill="#EF4444"
-            stroke="#DC2626"
-            strokeWidth="2"
-          />
-
-          {/* Glowing Crater Lava */}
-          <ellipse cx="295" cy="170" rx="26" ry="10" fill="#EF4444" stroke="#0F172A" strokeWidth="3" />
-          <ellipse cx="295" cy="170" rx="14" ry="5" fill="#FDE047" />
-
-          {/* Steam / Ash Plume (Daylight white/grey, NOT dark night) */}
-          <g transform={`translate(295, ${150 + Math.sin(frame * 0.12) * 6})`}>
-            <circle cx="-18" cy="-25" r="28" fill="#F8FAFC" stroke="#0F172A" strokeWidth="3" />
-            <circle cx="18" cy="-25" r="26" fill="#F1F5F9" stroke="#0F172A" strokeWidth="3" />
-            <circle cx="0" cy="-52" r="32" fill="#E2E8F0" stroke="#0F172A" strokeWidth="3" />
-            <circle cx="-10" cy="-35" r="6" fill="#F97316" />
-            <circle cx="12" cy="-45" r="5" fill="#FBBF24" />
+          {/* Steam / Ash Plume (Daylight White & Orange) */}
+          <g transform={`translate(270, ${560 + Math.sin(frame * 0.14) * 7})`}>
+            <circle cx="-28" cy="-32" r="36" fill="#F8FAFC" stroke="#0F172A" strokeWidth="4" />
+            <circle cx="28" cy="-32" r="34" fill="#F1F5F9" stroke="#0F172A" strokeWidth="4" />
+            <circle cx="0" cy="-68" r="42" fill="#E2E8F0" stroke="#0F172A" strokeWidth="4" />
+            <circle cx="-12" cy="-42" r="9" fill="#F97316" />
+            <circle cx="15" cy="-54" r="8" fill="#FBBF24" />
           </g>
 
-          {/* ================= 5. FLANK COLLAPSE (LONGSORAN LERENG) ================= */}
-          {/* Collapsing flank section sliding down */}
-          <g transform={`translate(${slideProgress * 0.7}, ${slideProgress * 1.2})`}>
-            {/* Detached section */}
+          {/* ================= 5. FLANK COLLAPSE & THICK ARROWS ================= */}
+          {/* Sliding Flank Block */}
+          <g transform={`translate(${slideProgress * 0.8}, ${slideProgress * 1.1})`}>
             <polygon
-              points="300,210 320,170 420,480 370,480"
+              points="288,650 308,595 450,1095 385,1095"
               fill="#64748B"
               stroke="#EA580C"
-              strokeWidth="4"
-              strokeDasharray="8 4"
+              strokeWidth="5"
+              strokeDasharray="10 6"
             />
           </g>
-
-          {/* Detachment Fault Line (retakan longsoran) */}
+          {/* Fault Line */}
           <path
-            d="M 300 210 Q 330 330 370 480"
+            d="M 288 650 Q 332 840 385 1095"
             stroke="#EF4444"
-            strokeWidth="4"
-            strokeDasharray="6 4"
+            strokeWidth="5"
+            strokeDasharray="8 6"
             fill="none"
           />
 
-          {/* Orange Displacement Arrows (pushing water) */}
-          <g transform="translate(385, 340)">
-            {/* Arrow 1: Downward flank slide */}
-            <path
-              d="M 0 0 L 35 45"
-              stroke="#EA580C"
-              strokeWidth="6"
-              strokeLinecap="round"
-            />
-            <polygon points="35,45 22,40 32,28" fill="#EA580C" />
-            {/* Arrow 2: Water displacement outward */}
-            <path
-              d="M 35 45 Q 70 30 110 55"
-              stroke="#F97316"
-              strokeWidth="6"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <polygon points="110,55 96,52 102,40" fill="#F97316" />
-          </g>
+          {/* Bold Cause-Effect Arrow 1: Flank Sliding Into Sea */}
+          <path
+            d="M 355 725 L 445 845"
+            stroke="#EA580C"
+            strokeWidth="16"
+            strokeLinecap="round"
+          />
+          <polygon points="462,868 416,844 452,814" fill="#EA580C" stroke="#0F172A" strokeWidth="2.5" />
+
+          {/* Bold Cause-Effect Arrow 2: Seawater Displaced Up & Right */}
+          <path
+            d="M 455 925 Q 520 830 615 840"
+            stroke="#F97316"
+            strokeWidth="14"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <polygon points="642,844 600,864 606,818" fill="#F97316" stroke="#0F172A" strokeWidth="2.5" />
         </g>
 
-        {/* ================= 6. ADVANCING TSUNAMI WAVE ================= */}
-        {/* Wave crest moving rightward */}
-        <g transform={`translate(${waveX}, 380)`}>
-          {/* Main wave curl */}
+        {/* ================= 6. TSUNAMI WAVE PROPAGATING TO UJUNG KULON ================= */}
+        <g transform={`translate(${waveX}, 880)`}>
           <path
-            d="M -70 0 Q -20 -95 30 -50 Q 50 -20 80 0 Z"
+            d="M -110 0 Q -25 -165 50 -85 Q 80 -35 125 0 Z"
             fill="#38BDF8"
             stroke="#0F172A"
-            strokeWidth="4.5"
+            strokeWidth="5.5"
           />
-          {/* White foam crest */}
           <path
-            d="M -22 -85 Q 10 -95 35 -55 Q 5 -60 -22 -85 Z"
+            d="M -30 -145 Q 25 -165 62 -92 Q 14 -102 -30 -145 Z"
             fill="#FFFFFF"
             stroke="#0F172A"
-            strokeWidth="2.5"
+            strokeWidth="3"
           />
-          {/* Forward propagation speed lines */}
-          <line x1="45" y1="-30" x2="85" y2="-30" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" />
-          <line x1="55" y1="-15" x2="95" y2="-15" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" />
+          {/* Bold forward push arrow */}
+          <line x1="-15" y1="-55" x2="75" y2="-55" stroke="#FFFFFF" strokeWidth="10" strokeLinecap="round" />
+          <polygon points="98,-55 64,-72 64,-38" fill="#FFFFFF" />
         </g>
 
-        {/* ================= 7. TECHNICAL CALLOUTS ================= */}
-        {/* Callout 1: Anak Krakatau - positioned inside left boundary */}
+        {/* ================= 7. LARGE MOBILE-READABLE CALLOUTS ================= */}
         <TechnicalCallout
-          x1={280}
-          y1={175}
-          x2={40}
-          y2={110}
+          x1={270}
+          y1={585}
+          x2={42}
+          y2={375}
           label="G. ANAK KRAKATAU"
           unit="SELAT SUNDA"
           progress={1}
           attachSide="left"
-          boxWidth={200}
-          boxHeight={48}
-          fontSize={13}
+          boxWidth={300}
+          boxHeight={74}
+          fontSize={24}
         />
 
-        {/* Callout 2: Longsoran Lereng */}
         <TechnicalCallout
           x1={395}
-          y1={320}
-          x2={490}
-          y2={250}
+          y1={780}
+          x2={370}
+          y2={495}
           label="LONGSORAN LERENG"
-          unit="FLANK COLLAPSE"
           color="#EA580C"
           progress={1}
           attachSide="left"
-          boxWidth={190}
-          boxHeight={48}
-          fontSize={13}
+          boxWidth={310}
+          boxHeight={56}
+          fontSize={24}
         />
 
-        {/* Callout 3: Tsunami wave heading to Ujung Kulon */}
         <TechnicalCallout
-          x1={waveX + 20}
-          y1={320}
-          x2={Math.min(780, waveX + 30)}
-          y2={210}
-          label="GELOMBANG TSUNAMI"
-          unit="ARAH PANTAI UJUNG KULON"
+          x1={waveX + 10}
+          y1={790}
+          x2={560}
+          y2={635}
+          label="TSUNAMI BESAR"
           color="#DC2626"
           progress={1}
           attachSide="bottom"
-          boxWidth={215}
-          boxHeight={48}
-          fontSize={13}
+          boxWidth={270}
+          boxHeight={56}
+          fontSize={24}
         />
 
-        {/* Sea Level indicator line */}
-        <line
-          x1="0"
-          y1="380"
-          x2="940"
-          y2="380"
-          stroke="#0284C7"
-          strokeWidth="1.5"
-          strokeDasharray="8 6"
+        <TechnicalCallout
+          x1={965}
+          y1={830}
+          x2={1035}
+          y2={375}
+          label="TN UJUNG KULON"
+          unit="ARAH PANTAI"
+          color="#15803D"
+          progress={1}
+          attachSide="right"
+          boxWidth={280}
+          boxHeight={74}
+          fontSize={24}
         />
-        <text
-          x="40"
-          y="370"
-          fontFamily={THEME.font}
-          fontWeight="800"
-          fontSize="13"
-          fill="#0284C7"
-        >
-          PERMUKAAN LAUT (0 M)
-        </text>
       </svg>
     </div>
   );

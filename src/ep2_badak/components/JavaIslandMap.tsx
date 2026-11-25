@@ -8,31 +8,25 @@ interface JavaIslandMapProps {
 }
 
 /**
- * Geographically accurate vector map of Pulau Jawa & Madura
+ * Geographically accurate vector map of Pulau Jawa & Madura (1080x1920 native stage)
  * Features:
- * - Iconic Semenanjung Ujung Kulon (Banten) southwest tip
- * - Semenanjung Muria (Jepara) prominent northern bulge
- * - Pulau Madura off the northeast coast of Surabaya
- * - Semenanjung Blambangan (TN Alas Purwo) southeast hook
- * - Volcanic mountain peaks along the spine
- * - Animated translocation route line
- * - Dynamic route progress contrasting Banten start (Shot 8) vs Alas Purwo reached (Shot 10)
- * - Spacious, neatly padded distance badge (no text collision)
+ * - Recognizable coastline: Ujung Kulon, Semenanjung Muria, Pulau Madura, Semenanjung Blambangan
+ * - Large, mobile-readable labels with safe screen margins
+ * - Distinct visual progression: Banten radar + route start (Shot 8) vs Alas Purwo arrival (Shot 10)
  */
 export const JavaIslandMap: React.FC<JavaIslandMapProps> = ({
   frame,
   progress,
   shotId,
 }) => {
-  // Compute route progress based on shot
-  // Shot 8 (TITIK AWAL: BANTEN): 0.05 to 0.20
-  // Shot 9 (JALUR PULAU JAWA): 0.25 to 0.80
-  // Shot 10-12 (ALAS PURWO, JATIM): 1.0 (completed)
+  // Shot 8 (f492-600): Start in Banten (~14% - 22%)
+  // Shot 9 (f600-708): Traveling mid-Java (~30% - 82%)
+  // Shot 10-12 (f708-942): Arrived at Alas Purwo (100%)
   let routeCompletion = 1.0;
   if (shotId === 8) {
-    routeCompletion = Math.min(0.25, 0.05 + progress * 0.20);
+    routeCompletion = 0.14 + progress * 0.12;
   } else if (shotId === 9) {
-    routeCompletion = 0.25 + progress * 0.65;
+    routeCompletion = 0.28 + progress * 0.56;
   } else {
     routeCompletion = 1.0;
   }
@@ -40,231 +34,227 @@ export const JavaIslandMap: React.FC<JavaIslandMapProps> = ({
   const isAtBanten = shotId === 8;
   const isAtAlasPurwo = shotId >= 10;
 
-  // Radar ping pulse
-  const pingScale = 1 + (Math.sin(frame * 0.2) * 0.5 + 0.5) * 0.8;
-  const pingOpacity = 0.8 - (Math.sin(frame * 0.2) * 0.5 + 0.5) * 0.7;
+  const pingPhase = (Math.sin(frame * 0.22) + 1) * 0.5;
+  const pingScale = 1 + pingPhase * 0.9;
+  const pingOpacity = 0.9 - pingPhase * 0.75;
 
-  // Route arc endpoints
-  // Banten (Ujung Kulon): x=95, y=275
-  // Alas Purwo (Banyuwangi): x=940, y=295
-  // Apex at x=517, y=105
-  const arcLength = 1000;
-  const dashOffset = -frame * 4;
+  // Clip X coordinate for active animated dashed line
+  const startX = 115;
+  const endX = 955;
+  const clipWidth = startX + (endX - startX) * routeCompletion + 20;
+  const dashOffset = -frame * 5;
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%", padding: "24px 30px" }}>
-      {/* Ocean background */}
+    <div style={{ position: "relative", width: 1080, height: 1920, overflow: "hidden" }}>
+      {/* Bright Ocean Background */}
       <div
         style={{
           position: "absolute",
           inset: 0,
-          background: "linear-gradient(180deg, #BAE6FD 0%, #7DD3FC 100%)",
+          background: "linear-gradient(180deg, #CBEAFF 0%, #93E3FF 40%, #7DD3FC 100%)",
         }}
       />
 
-      {/* Decorative ocean wave lines */}
+      {/* Decorative Ocean Waves */}
       <svg
-        viewBox="0 0 1080 800"
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.35 }}
+        viewBox="0 0 1080 1920"
+        style={{ position: "absolute", inset: 0, width: 1080, height: 1920, opacity: 0.32 }}
       >
-        {[140, 260, 390, 520, 650].map((y, i) => (
+        {[420, 620, 1020, 1200, 1620].map((y, i) => (
           <path
             key={i}
-            d={`M20 ${y} Q200 ${y - 14} 380 ${y} Q560 ${y + 14} 740 ${y} Q920 ${y - 14} 1060 ${y}`}
+            d={`M 0 ${y} Q 180 ${y - 22} 360 ${y} Q 540 ${y + 22} 720 ${y} Q 900 ${y - 22} 1080 ${y}`}
             stroke="#0284C7"
-            strokeWidth="2.5"
+            strokeWidth="4"
             fill="none"
           />
         ))}
       </svg>
 
-      {/* Main Map SVG */}
+      {/* Main Map Stage positioned cleanly between top badge (300px) and subtitle zone (1210px) */}
       <svg
-        viewBox="0 0 1020 520"
-        style={{ width: "100%", height: "100%", position: "relative", zIndex: 2, overflow: "visible" }}
+        viewBox="0 0 1080 860"
+        style={{
+          position: "absolute",
+          top: 320,
+          left: 0,
+          width: 1080,
+          height: 860,
+          overflow: "visible",
+        }}
       >
-        {/* ================= Pulau Jawa Main Landmass ================= */}
-        {/* Accurate coastline with iconic Muria peninsula, Blambangan, & Ujung Kulon */}
+        <defs>
+          <clipPath id="routeTravelClip">
+            <rect x="0" y="0" width={clipWidth} height="860" />
+          </clipPath>
+        </defs>
+
+        {/* ================= PULAU JAWA MAIN LANDMASS ================= */}
+        {/* Recognizable elongated west-to-east shape with Ujung Kulon, Muria, & Blambangan */}
         <path
-          d={`M 90 270
-             Q 65 290 45 280
-             Q 30 260 52 245
-             Q 75 235 90 205
-             Q 105 185 130 180
-             Q 155 190 185 182
-             Q 235 182 295 190
-             Q 330 180 370 170
-             Q 410 155 450 160
-             Q 480 175 520 185
-             Q 550 190 600 185
-             Q 640 180 690 185
-             Q 720 160 745 130
-             Q 775 130 790 165
-             Q 815 190 860 195
-             Q 895 205 930 215
-             Q 965 220 995 230
-             Q 1005 255 985 280
-             Q 975 320 955 330
-             Q 930 335 890 310
-             Q 850 315 800 315
-             Q 750 320 690 315
-             Q 650 320 600 315
-             Q 560 320 510 315
-             Q 460 315 410 318
-             Q 370 325 320 315
-             Q 275 325 240 310
-             Q 200 315 170 300
-             Q 140 310 110 300
-             Q 95 305 90 270 Z`}
+          d={`M 105 565
+             Q 75 595 55 578
+             Q 42 552 68 532
+             Q 96 518 112 478
+             Q 132 452 162 448
+             Q 192 462 225 452
+             Q 280 452 340 462
+             Q 376 446 418 432
+             Q 456 416 498 424
+             Q 530 442 570 452
+             Q 605 458 645 452
+             Q 682 446 726 452
+             Q 755 418 782 382
+             Q 814 382 828 424
+             Q 852 454 894 462
+             Q 930 472 964 484
+             Q 995 492 1015 508
+             Q 1022 542 1002 572
+             Q 992 612 970 624
+             Q 944 630 908 602
+             Q 870 606 822 606
+             Q 772 614 716 606
+             Q 672 614 622 606
+             Q 578 614 528 606
+             Q 480 606 432 610
+             Q 388 618 340 606
+             Q 298 618 260 600
+             Q 218 606 188 588
+             Q 158 598 128 588
+             Q 112 582 105 565 Z`}
           fill="#22C55E"
           stroke="#0F172A"
-          strokeWidth="5"
+          strokeWidth="6"
           strokeLinejoin="round"
         />
 
-        {/* Mountain ridge south shading */}
+        {/* Interior Mountain Ridge Shading */}
         <path
-          d={`M 90 270
-             Q 110 300 140 310
-             Q 170 300 200 315
-             Q 240 310 275 325
-             Q 320 315 370 325
-             Q 410 318 460 315
-             Q 510 315 560 320
-             Q 600 315 650 320
-             Q 690 315 750 320
-             Q 800 315 850 315
-             Q 890 310 930 335
-             Q 955 330 975 320
-             Q 950 300 900 295
-             Q 840 290 770 295
-             Q 700 290 630 295
-             Q 550 290 480 295
-             Q 400 295 330 290
-             Q 260 295 200 285
-             Q 140 280 90 270 Z`}
+          d={`M 105 565
+             Q 128 588 158 598
+             Q 188 588 218 606
+             Q 260 600 298 618
+             Q 340 606 388 618
+             Q 432 610 480 606
+             Q 528 606 578 614
+             Q 622 606 672 614
+             Q 716 606 772 614
+             Q 822 606 870 606
+             Q 908 602 944 630
+             Q 970 624 992 612
+             Q 962 586 910 578
+             Q 846 572 778 578
+             Q 706 572 634 578
+             Q 556 572 486 578
+             Q 408 578 338 572
+             Q 268 578 212 566
+             Q 152 560 105 565 Z`}
           fill="#16A34A"
-          opacity="0.8"
+          opacity="0.82"
         />
 
-        {/* ================= Pulau Madura ================= */}
+        {/* ================= PULAU MADURA ================= */}
         <path
-          d={`M 840 165
-             Q 880 150 930 155
-             Q 965 165 960 180
-             Q 930 190 885 190
-             Q 850 185 840 165 Z`}
+          d={`M 862 426
+             Q 906 408 958 414
+             Q 994 426 986 444
+             Q 954 456 908 456
+             Q 872 448 862 426 Z`}
           fill="#4ADE80"
           stroke="#0F172A"
-          strokeWidth="3.5"
+          strokeWidth="4.5"
           strokeLinejoin="round"
         />
         <text
-          x="895"
-          y="176"
+          x="924"
+          y="400"
           textAnchor="middle"
           fontFamily={THEME.font}
-          fontWeight="800"
-          fontSize="11"
-          fill="#14532D"
+          fontWeight="900"
+          fontSize="20"
+          fill="#0F172A"
         >
-          P. MADURA
+          MADURA
         </text>
 
-        {/* ================= Volcanic Peaks ================= */}
-        <g fill="#15803D" stroke="#0F172A" strokeWidth="2.5">
-          {/* G. Halimun / Salak */}
-          <polygon points="175,255 190,225 205,255" />
-          {/* G. Gede / Pangrango */}
-          <polygon points="230,250 245,220 260,250" />
-          {/* G. Slamet */}
-          <polygon points="450,255 470,210 490,255" />
-          {/* G. Merapi / Merbabu */}
-          <polygon points="560,250 580,215 600,250" />
-          {/* G. Bromo / Semeru */}
-          <polygon points="805,255 825,215 845,255" />
-          {/* G. Ijen / Raung */}
-          <polygon points="900,260 920,220 940,260" />
+        {/* ================= VOLCANIC PEAKS ================= */}
+        <g fill="#15803D" stroke="#0F172A" strokeWidth="3.5">
+          <polygon points="190,545 210,505 230,545" />
+          <polygon points="255,540 275,500 295,540" />
+          <polygon points="480,545 502,492 524,545" />
+          <polygon points="592,540 614,496 636,540" />
+          <polygon points="815,545 838,496 861,545" />
+          <polygon points="910,552 932,504 954,552" />
         </g>
 
-        {/* ================= Translocation Route Arc ================= */}
-        {/* Glow under-trace (only for active segment) */}
-        <path
-          d="M 95 260 Q 517 75 940 280"
-          stroke="#FEF08A"
-          strokeWidth="18"
-          opacity="0.6"
-          strokeDasharray={`${arcLength * routeCompletion} ${arcLength}`}
-          fill="none"
-          strokeLinecap="round"
-        />
-
-        {/* Full planned path: faint guide line in shot 9 and 10 */}
+        {/* ================= TRANSLOCATION ROUTE ARC ================= */}
+        {/* Faint planned guide path only shown in Shot 9+ */}
         {!isAtBanten && (
           <path
-            d="M 95 260 Q 517 75 940 280"
-            stroke="#CBD5E1"
-            strokeWidth="4"
-            strokeDasharray="8 8"
+            d="M 115 535 Q 535 280 955 555"
+            stroke="#FFFFFF"
+            strokeWidth="7"
+            strokeDasharray="12 12"
             fill="none"
-            strokeLinecap="round"
-            opacity="0.7"
+            opacity="0.6"
           />
         )}
 
-        {/* Active Animated Route Line */}
-        <path
-          d="M 95 260 Q 517 75 940 280"
-          stroke="#EA580C"
-          strokeWidth="7"
-          strokeDashoffset={dashOffset}
-          strokeDasharray={`${arcLength * routeCompletion} ${arcLength}`}
-          fill="none"
-          strokeLinecap="round"
-        />
+        {/* Active Animated Route Segment (clipped strictly to routeCompletion) */}
+        <g clipPath="url(#routeTravelClip)">
+          <path
+            d="M 115 535 Q 535 280 955 555"
+            stroke="#FEF08A"
+            strokeWidth="22"
+            opacity="0.7"
+            fill="none"
+            strokeLinecap="round"
+          />
+          <path
+            d="M 115 535 Q 535 280 955 555"
+            stroke="#EA580C"
+            strokeWidth="10"
+            strokeDasharray="22 14"
+            strokeDashoffset={dashOffset}
+            fill="none"
+            strokeLinecap="round"
+          />
+        </g>
 
-        {/* ================= Distance Banner (Apex) ================= */}
-        {/* Sized with generous padding so text never overlaps or clips */}
-        <g transform="translate(517, 85)">
+        {/* ================= DISTANCE BANNER (TOP CENTER) ================= */}
+        <g transform="translate(540, 125)">
           <rect
-            x="-140"
-            y="-32"
-            width="280"
-            height="64"
-            rx="14"
+            x="-265"
+            y="-76"
+            width="530"
+            height="152"
+            rx="22"
             fill="#FFFDF7"
             stroke="#0F172A"
-            strokeWidth="3.5"
-            filter="drop-shadow(0 5px 0 #0F172A)"
+            strokeWidth="4.5"
+            filter="drop-shadow(0 8px 0 rgba(15,23,42,0.22))"
           />
-          {/* Badge accent tag */}
-          <rect
-            x="-140"
-            y="-32"
-            width="280"
-            height="18"
-            rx="12"
-            fill="#EA580C"
-          />
+          <rect x="-265" y="-76" width="530" height="42" rx="18" fill="#EA580C" />
+          <rect x="-265" y="-50" width="530" height="16" fill="#EA580C" />
           <text
             x="0"
-            y="-20"
+            y="-47"
             textAnchor="middle"
             fontFamily={THEME.font}
             fontWeight="900"
-            fontSize="11"
+            fontSize="22"
             fill="#FFFFFF"
-            letterSpacing="0.8"
+            letterSpacing="1"
           >
-            TRANSLOKASI LINTAS JAWA
+            RUTE TRANSLOKASI LINTAS JAWA
           </text>
           <text
             x="0"
-            y="5"
+            y="14"
             textAnchor="middle"
             fontFamily={THEME.font}
             fontWeight="900"
-            fontSize="20"
+            fontSize="44"
             fill="#DC2626"
             letterSpacing="0.5"
           >
@@ -272,58 +262,55 @@ export const JavaIslandMap: React.FC<JavaIslandMapProps> = ({
           </text>
           <text
             x="0"
-            y="23"
+            y="54"
             textAnchor="middle"
             fontFamily={THEME.font}
             fontWeight="800"
-            fontSize="12"
-            fill="#475569"
-            letterSpacing="0.4"
+            fontSize="22"
+            fill="#334155"
           >
-            UJUNG KULON → ALAS PURWO
+            BANTEN  →  BANYUWANGI, JATIM
           </text>
         </g>
 
-        {/* ================= PIN 1: TN UJUNG KULON (Banten) ================= */}
-        <g transform="translate(95, 260)">
-          {/* Radar ping when at Banten */}
+        {/* ================= PIN 1: TN UJUNG KULON (BANTEN) ================= */}
+        <g transform="translate(115, 535)">
           {isAtBanten && (
             <circle
               cx="0"
               cy="0"
-              r={24 * pingScale}
+              r={30 * pingScale}
               fill="none"
               stroke="#0284C7"
-              strokeWidth="3"
+              strokeWidth="5"
               opacity={pingOpacity}
             />
           )}
-          <circle cx="0" cy="0" r="16" fill="#0284C7" stroke="#0F172A" strokeWidth="4" />
-          <circle cx="0" cy="0" r="6" fill="#FFFFFF" />
-          {/* Pin Pole */}
-          <path d="M 0 -8 L 0 -50" stroke="#0F172A" strokeWidth="3.5" />
-          <circle cx="0" cy="-50" r="12" fill="#EF4444" stroke="#0F172A" strokeWidth="3" />
+          <circle cx="0" cy="0" r="20" fill="#0284C7" stroke="#0F172A" strokeWidth="4.5" />
+          <circle cx="0" cy="0" r="8" fill="#FFFFFF" />
+          <path d="M 0 -18 L 0 -75" stroke="#0F172A" strokeWidth="4.5" />
+          <circle cx="0" cy="-75" r="14" fill="#EF4444" stroke="#0F172A" strokeWidth="3.5" />
 
-          {/* Label Card */}
-          <g transform="translate(0, -78)">
+          {/* Label Card placed with generous left margin (shifted right of pin) */}
+          <g transform="translate(75, -118)">
             <rect
-              x="-82"
-              y="-16"
-              width="164"
-              height="32"
-              rx="9"
+              x="-145"
+              y="-28"
+              width="290"
+              height="56"
+              rx="14"
               fill="#FFFDF7"
               stroke="#0284C7"
-              strokeWidth="2.5"
-              filter="drop-shadow(0 3px 0 rgba(15,23,42,0.2))"
+              strokeWidth="3.5"
+              filter="drop-shadow(0 4px 0 rgba(15,23,42,0.22))"
             />
             <text
               x="0"
-              y="5"
+              y="8"
               textAnchor="middle"
               fontFamily={THEME.font}
               fontWeight="900"
-              fontSize="13"
+              fontSize="24"
               fill="#0284C7"
             >
               TN UJUNG KULON
@@ -331,70 +318,68 @@ export const JavaIslandMap: React.FC<JavaIslandMapProps> = ({
           </g>
         </g>
 
-        {/* ================= PIN 2: TN ALAS PURWO (Banyuwangi) ================= */}
-        <g transform="translate(940, 280)">
-          {/* Radar ping when route completes to Alas Purwo */}
+        {/* ================= PIN 2: TN ALAS PURWO (JATIM) ================= */}
+        <g transform="translate(955, 555)">
           {isAtAlasPurwo && (
             <circle
               cx="0"
               cy="0"
-              r={24 * pingScale}
+              r={30 * pingScale}
               fill="none"
               stroke="#16A34A"
-              strokeWidth="3"
+              strokeWidth="5"
               opacity={pingOpacity}
             />
           )}
-          <circle cx="0" cy="0" r="16" fill="#16A34A" stroke="#0F172A" strokeWidth="4" />
-          <circle cx="0" cy="0" r="6" fill="#FFFFFF" />
-          {/* Pin Pole */}
-          <path d="M 0 -8 L 0 -50" stroke="#0F172A" strokeWidth="3.5" />
-          <circle cx="0" cy="-50" r="12" fill="#F97316" stroke="#0F172A" strokeWidth="3" />
+          <circle cx="0" cy="0" r="20" fill="#16A34A" stroke="#0F172A" strokeWidth="4.5" />
+          <circle cx="0" cy="0" r="8" fill="#FFFFFF" />
+          <path d="M 0 -18 L 0 -75" stroke="#0F172A" strokeWidth="4.5" />
+          <circle cx="0" cy="-75" r="14" fill="#F97316" stroke="#0F172A" strokeWidth="3.5" />
 
-          {/* Label Card */}
-          <g transform="translate(0, -78)">
+          {/* Label Card shifted left of pin so it NEVER clips at right edge */}
+          <g transform="translate(-75, -118)">
             <rect
-              x="-80"
-              y="-16"
-              width="160"
-              height="32"
-              rx="9"
+              x="-145"
+              y="-28"
+              width="290"
+              height="56"
+              rx="14"
               fill="#FFFDF7"
               stroke="#16A34A"
-              strokeWidth="2.5"
-              filter="drop-shadow(0 3px 0 rgba(15,23,42,0.2))"
+              strokeWidth="3.5"
+              filter="drop-shadow(0 4px 0 rgba(15,23,42,0.22))"
             />
             <text
               x="0"
-              y="5"
+              y="8"
               textAnchor="middle"
               fontFamily={THEME.font}
               fontWeight="900"
-              fontSize="13"
-              fill="#16A34A"
+              fontSize="24"
+              fill="#15803D"
             >
               TN ALAS PURWO
             </text>
           </g>
         </g>
 
-        {/* ================= Compass Rose ================= */}
-        <g transform="translate(960, 60)">
-          <circle cx="0" cy="0" r="26" fill="#FFFDF7" stroke="#0F172A" strokeWidth="2.5" opacity="0.95" />
-          <text x="0" y="-11" textAnchor="middle" fontFamily={THEME.font} fontWeight="900" fontSize="13" fill="#DC2626">
+        {/* ================= COMPASS ROSE ================= */}
+        <g transform="translate(970, 125)">
+          <circle cx="0" cy="0" r="42" fill="#FFFDF7" stroke="#0F172A" strokeWidth="3.5" />
+          <text x="0" y="-17" textAnchor="middle" fontFamily={THEME.font} fontWeight="900" fontSize="20" fill="#DC2626">
             U
           </text>
-          <text x="0" y="20" textAnchor="middle" fontFamily={THEME.font} fontWeight="700" fontSize="11" fill="#64748B">
+          <text x="0" y="30" textAnchor="middle" fontFamily={THEME.font} fontWeight="800" fontSize="17" fill="#64748B">
             S
           </text>
-          <text x="16" y="4" textAnchor="middle" fontFamily={THEME.font} fontWeight="700" fontSize="11" fill="#64748B">
+          <text x="24" y="6" textAnchor="middle" fontFamily={THEME.font} fontWeight="800" fontSize="17" fill="#64748B">
             T
           </text>
-          <text x="-16" y="4" textAnchor="middle" fontFamily={THEME.font} fontWeight="700" fontSize="11" fill="#64748B">
+          <text x="-24" y="6" textAnchor="middle" fontFamily={THEME.font} fontWeight="800" fontSize="17" fill="#64748B">
             B
           </text>
-          <line x1="0" y1="-18" x2="0" y2="18" stroke="#0F172A" strokeWidth="1.5" />
-          <line x1="-18" y1="0" x2="18" y2="0" stroke="#0F172A" strokeWidth="1.5" />
+          <line x1="0" y1="-12" x2="0" y2="12" stroke="#0F172A" strokeWidth="2.5" />
+          <line x1="-12" y1="0" x2="12" y2="0" stroke="#0F172A" strokeWidth="2.5" />
         </g>
       </svg>
     </div>

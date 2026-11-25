@@ -51,7 +51,8 @@ export const RhinoIllustration: React.FC<RhinoIllustrationProps> = ({
   const hornColor = isMemorial ? "#E2E8F0" : THEME.rhino.horn;
 
   const babyScale = isBaby ? 0.55 : 1;
-  const babyTranslate = isBaby ? "translate(240, 240)" : "";
+  // Align baby hooves (368 * 0.55 = 202.4) to adult ground line (368): 368 - 202.4 = 165.6
+  const babyTranslate = isBaby ? "translate(145, 165)" : "";
 
   const viewW = 640;
   const viewH = 400;
@@ -75,8 +76,8 @@ export const RhinoIllustration: React.FC<RhinoIllustrationProps> = ({
         <ellipse
           cx="320"
           cy="368"
-          rx={240 * babyScale}
-          ry={18 * babyScale}
+          rx={240}
+          ry={18}
           fill="rgba(15, 23, 42, 0.18)"
         />
 
@@ -89,13 +90,10 @@ export const RhinoIllustration: React.FC<RhinoIllustrationProps> = ({
           strokeLinejoin="round"
           fill={shadeSkin}
         >
-          <path d="M400 240 Q410 290 415 350 L445 350 Q440 290 430 240 Z" />
-          {/* Hoof */}
-          <rect x="415" y="345" width="30" height="12" rx="4" fill={shadeSkin} stroke="#0F172A" strokeWidth="3" />
-          {/* Toenails */}
-          <ellipse cx="420" cy="355" rx="3.5" ry="2.5" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.5" />
-          <ellipse cx="430" cy="355" rx="3.5" ry="2.5" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.5" />
-          <ellipse cx="440" cy="355" rx="3.5" ry="2.5" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.5" />
+          <path d="M396 238 Q400 285 412 335 Q414 352 420 356 L446 356 Q450 350 446 334 Q444 285 434 238 Z" />
+          <ellipse cx="422" cy="354" rx="4" ry="3" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.8" />
+          <ellipse cx="432" cy="355" rx="4" ry="3" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.8" />
+          <ellipse cx="442" cy="354" rx="4" ry="3" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.8" />
         </g>
 
         {/* Front Right Leg */}
@@ -106,11 +104,10 @@ export const RhinoIllustration: React.FC<RhinoIllustrationProps> = ({
           strokeLinejoin="round"
           fill={shadeSkin}
         >
-          <path d="M180 240 Q185 290 190 350 L220 350 Q218 290 210 240 Z" />
-          <rect x="190" y="345" width="30" height="12" rx="4" fill={shadeSkin} stroke="#0F172A" strokeWidth="3" />
-          <ellipse cx="195" cy="355" rx="3.5" ry="2.5" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.5" />
-          <ellipse cx="205" cy="355" rx="3.5" ry="2.5" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.5" />
-          <ellipse cx="215" cy="355" rx="3.5" ry="2.5" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.5" />
+          <path d="M178 238 Q182 288 188 335 Q189 352 194 356 L220 356 Q224 350 220 334 Q218 285 212 238 Z" />
+          <ellipse cx="196" cy="354" rx="4" ry="3" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.8" />
+          <ellipse cx="206" cy="355" rx="4" ry="3" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.8" />
+          <ellipse cx="216" cy="354" rx="4" ry="3" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.8" />
         </g>
 
         {/* ===== TAIL ===== */}
@@ -135,7 +132,7 @@ export const RhinoIllustration: React.FC<RhinoIllustrationProps> = ({
           />
           {/* Midsection Saddle Plate (lighter) */}
           <path
-            d="M255 162 L342 165 L348 282 L248 282 Z"
+            d="M255 162 Q300 156 342 165 L348 282 Q298 289 248 282 Z"
             fill={lightSkin}
             stroke="#0F172A"
             strokeWidth="5"
@@ -202,11 +199,10 @@ export const RhinoIllustration: React.FC<RhinoIllustrationProps> = ({
           strokeLinejoin="round"
           fill={baseSkin}
         >
-          <path d="M140 238 Q145 290 150 352 L182 352 Q180 290 172 238 Z" />
-          <rect x="150" y="347" width="32" height="13" rx="4" fill={baseSkin} stroke="#0F172A" strokeWidth="3" />
-          <ellipse cx="156" cy="358" rx="3.5" ry="2.5" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.5" />
-          <ellipse cx="166" cy="358" rx="3.5" ry="2.5" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.5" />
-          <ellipse cx="176" cy="358" rx="3.5" ry="2.5" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.5" />
+          <path d="M138 238 Q140 288 148 338 Q149 354 154 358 L182 358 Q186 352 182 336 Q180 288 174 238 Z" />
+          <ellipse cx="157" cy="356" rx="4" ry="3" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.8" />
+          <ellipse cx="167" cy="357" rx="4" ry="3" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.8" />
+          <ellipse cx="177" cy="356" rx="4" ry="3" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.8" />
         </g>
 
         {/* Back Left Leg */}
@@ -217,11 +213,10 @@ export const RhinoIllustration: React.FC<RhinoIllustrationProps> = ({
           strokeLinejoin="round"
           fill={baseSkin}
         >
-          <path d="M360 238 Q365 290 370 352 L402 352 Q400 290 390 238 Z" />
-          <rect x="370" y="347" width="32" height="13" rx="4" fill={baseSkin} stroke="#0F172A" strokeWidth="3" />
-          <ellipse cx="376" cy="358" rx="3.5" ry="2.5" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.5" />
-          <ellipse cx="386" cy="358" rx="3.5" ry="2.5" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.5" />
-          <ellipse cx="396" cy="358" rx="3.5" ry="2.5" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.5" />
+          <path d="M358 238 Q360 288 368 338 Q369 354 374 358 L402 358 Q406 352 402 336 Q400 288 392 238 Z" />
+          <ellipse cx="377" cy="356" rx="4" ry="3" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.8" />
+          <ellipse cx="387" cy="357" rx="4" ry="3" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.8" />
+          <ellipse cx="397" cy="356" rx="4" ry="3" fill="#F1F5F9" stroke="#0F172A" strokeWidth="1.8" />
         </g>
 
         {/* ===== HEAD with nodding animation ===== */}

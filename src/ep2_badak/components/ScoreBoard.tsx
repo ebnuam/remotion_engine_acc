@@ -7,20 +7,22 @@ interface ScoreBoardProps {
   visible?: boolean;
   /** Which option is currently highlighted: "pindah" | "perkuat" | "none" */
   highlight?: "pindah" | "perkuat" | "none";
-  compact?: boolean;
 }
 
 const INDICATORS = [
-  { label: "JARAK TEMPUH", pindah: "~1.000 KM", perkuat: "< 15 KM" },
-  { label: "RISIKO FATAL", pindah: "TINGGI", perkuat: "MINIMAL" },
-  { label: "EFISIENSI", pindah: "RENDAH", perkuat: "OPTIMAL" },
+  { label: "JARAK", pindah: "~1.000 KM", perkuat: "< 15 KM" },
+  { label: "RISIKO", pindah: "TINGGI", perkuat: "MINIMAL" },
+  { label: "FOKUS", pindah: "PINDAH", perkuat: "PERKUAT" },
 ];
 
+/**
+ * Compact, mobile-readable ScoreBoard designed natively for 1080x1920 virtual canvas.
+ * Placed cleanly in top-right safe area (top: 325px, right: 36px) well below the top badge.
+ */
 export const ScoreBoard: React.FC<ScoreBoardProps> = ({
   frame,
   visible = true,
   highlight = "none",
-  compact = true,
 }) => {
   const { fps } = useVideoConfig();
 
@@ -35,24 +37,22 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
   });
 
   const opacity = interpolate(entrySpring, [0, 1], [0, 1]);
-  const translateX = interpolate(entrySpring, [0, 1], [60, 0]);
-
-  const cardWidth = compact ? 190 : 220;
+  const translateX = interpolate(entrySpring, [0, 1], [80, 0]);
 
   return (
     <div
       style={{
         position: "absolute",
-        top: "22%",
-        right: "4%",
+        top: 325,
+        right: 36,
         opacity,
         transform: `translateX(${translateX}px)`,
-        width: cardWidth,
+        width: 370,
         backgroundColor: THEME.scoreboard.bg,
-        border: `2.5px solid ${THEME.scoreboard.border}`,
-        borderRadius: 14,
+        border: `4px solid ${THEME.scoreboard.border}`,
+        borderRadius: 20,
         overflow: "hidden",
-        boxShadow: "0 6px 0 rgba(15,23,42,0.22)",
+        boxShadow: "0 10px 0 rgba(15,23,42,0.22)",
         zIndex: 35,
         fontFamily: THEME.font,
         pointerEvents: "none",
@@ -62,7 +62,7 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
       <div
         style={{
           backgroundColor: THEME.scoreboard.headerBg,
-          padding: "6px 10px",
+          padding: "10px 14px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -71,7 +71,7 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
         <span
           style={{
             fontWeight: 900,
-            fontSize: 11,
+            fontSize: 19,
             color: THEME.scoreboard.headerText,
             letterSpacing: 0.8,
             textTransform: "uppercase",
@@ -79,15 +79,15 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
         >
           OPSI
         </span>
-        <div style={{ display: "flex", gap: 5 }}>
+        <div style={{ display: "flex", gap: 8 }}>
           <span
             style={{
               fontWeight: 900,
-              fontSize: 10,
-              color: THEME.scoreboard.pindahAccent,
-              background: "rgba(239,68,68,0.18)",
-              padding: "1.5px 5px",
-              borderRadius: 5,
+              fontSize: 17,
+              color: "#FCA5A5",
+              background: "rgba(239,68,68,0.24)",
+              padding: "3px 9px",
+              borderRadius: 8,
               letterSpacing: 0.4,
             }}
           >
@@ -96,11 +96,11 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
           <span
             style={{
               fontWeight: 900,
-              fontSize: 10,
-              color: THEME.scoreboard.perkuatAccent,
-              background: "rgba(22,163,74,0.18)",
-              padding: "1.5px 5px",
-              borderRadius: 5,
+              fontSize: 17,
+              color: "#86EFAC",
+              background: "rgba(22,163,74,0.28)",
+              padding: "3px 9px",
+              borderRadius: 8,
               letterSpacing: 0.4,
             }}
           >
@@ -120,85 +120,56 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
             key={row.label}
             style={{
               backgroundColor: rowBg,
-              padding: "5px 8px",
-              borderTop: `1px solid #E2E8F0`,
+              padding: "8px 14px",
+              borderTop: "2px solid #E2E8F0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
             }}
           >
-            <div
+            <span
               style={{
-                fontSize: 9,
-                fontWeight: 700,
-                color: THEME.inkMuted,
+                fontSize: 17,
+                fontWeight: 800,
+                color: THEME.inkLight,
                 textTransform: "uppercase",
-                letterSpacing: 0.5,
-                marginBottom: 2,
+                width: 82,
               }}
             >
               {row.label}
-            </div>
-            <div
+            </span>
+            <span
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 4,
+                fontSize: 19,
+                fontWeight: 900,
+                color: THEME.scoreboard.pindahAccent,
+                background: isHighPindah ? "rgba(239,68,68,0.16)" : "transparent",
+                padding: "3px 6px",
+                borderRadius: 6,
+                flex: 1,
+                textAlign: "center",
               }}
             >
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 900,
-                  color: THEME.scoreboard.pindahAccent,
-                  background: isHighPindah ? "rgba(239,68,68,0.18)" : "transparent",
-                  padding: "1px 4px",
-                  borderRadius: 4,
-                  letterSpacing: 0.2,
-                  flex: 1,
-                  textAlign: "center",
-                }}
-              >
-                {row.pindah}
-              </span>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 900,
-                  color: THEME.scoreboard.perkuatAccent,
-                  background: isHighPerkuat ? "rgba(22,163,74,0.18)" : "transparent",
-                  padding: "1px 4px",
-                  borderRadius: 4,
-                  letterSpacing: 0.2,
-                  flex: 1,
-                  textAlign: "center",
-                }}
-              >
-                {row.perkuat}
-              </span>
-            </div>
+              {row.pindah}
+            </span>
+            <span
+              style={{
+                fontSize: 19,
+                fontWeight: 900,
+                color: THEME.scoreboard.perkuatAccent,
+                background: isHighPerkuat ? "rgba(22,163,74,0.18)" : "transparent",
+                padding: "3px 6px",
+                borderRadius: 6,
+                flex: 1,
+                textAlign: "center",
+              }}
+            >
+              {row.perkuat}
+            </span>
           </div>
         );
       })}
-
-      {/* Footer CTA */}
-      <div
-        style={{
-          backgroundColor: "#F1F5F9",
-          padding: "4px 8px",
-          borderTop: "1px solid #E2E8F0",
-          textAlign: "center",
-        }}
-      >
-        <span
-          style={{
-            fontSize: 9,
-            fontWeight: 800,
-            color: THEME.inkMuted,
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-          }}
-        >
-          TULIS DI KOMENTAR
-        </span>
-      </div>
     </div>
   );
 };
