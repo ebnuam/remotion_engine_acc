@@ -12,6 +12,14 @@ build/
 *.png
 *.jpg
 *.jpeg
+!.agy/
+!.agy/skills/
+!.agy/skills/cartoon-3d-short/
+!.agy/skills/cartoon-3d-short/references/
+!.agy/skills/cartoon-3d-short/references/frames/
+!.agy/skills/cartoon-3d-short/references/sheets/
+!.agy/skills/cartoon-3d-short/references/frames/*.jpg
+!.agy/skills/cartoon-3d-short/references/sheets/*.jpg
 
 # Logs & OS files
 *.log
