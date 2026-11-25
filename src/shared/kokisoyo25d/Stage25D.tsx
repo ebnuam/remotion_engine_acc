@@ -8,8 +8,18 @@ import { AbsoluteFill, Audio, getInputProps, useCurrentFrame, useVideoConfig } f
 import { ThreeCanvas } from "@remotion/three";
 import { useThree } from "@react-three/fiber";
 import { EffectComposer } from "@react-three/postprocessing";
-import { BlendFunction, BloomEffect, ToneMappingEffect, ToneMappingMode } from "postprocessing";
-import { InkPass, LensBlur, GrainEffect, GradeEffect, GRADES, GRADE_STRENGTH, gradeFor, noInkFallback } from "./postfx";
+import { BlendFunction, BloomEffect } from "postprocessing";
+import {
+  InkPass,
+  LensBlur,
+  GrainEffect,
+  GradeEffect,
+  GRADES,
+  GRADE_STRENGTH,
+  createNeutralToneMappingEffect,
+  gradeFor,
+  noInkFallback,
+} from "./postfx";
 import { LightMode } from "./lights";
 import { computeCrossfadeLayers, DofEntry, evaluateDof } from "./cameraRig";
 import { V3 } from "./proceduralWorld";
@@ -45,7 +55,7 @@ function resolvePostConfig(defaultMode: RenderQualityMode): Required<Omit<PostCo
   const isDraft = mode === "draft";
   return {
     mode,
-    ink: input.ink ?? true,
+    ink: input.ink ?? !isDraft,
     lens: input.lens ?? !isDraft,
     pre: input.pre ?? !isDraft,
     bloom: input.bloom ?? true,
@@ -94,7 +104,7 @@ const StageInner: React.FC<InnerProps> = ({ shotId, shots, dofTable, createWorld
       ink: new InkPass(scene, camera as THREE.PerspectiveCamera),
       lens: new LensBlur({ maxCoC: 24, nearScale: 1.2 }),
       bloom: makeBloom(),
-      tone: new ToneMappingEffect({ mode: ToneMappingMode.NEUTRAL }),
+      tone: createNeutralToneMappingEffect(),
       grade: new GradeEffect(GRADES.day, GRADE_STRENGTH.day),
       grain: new GrainEffect({ amount: 0.025, cellPx: 1.5 }),
     }),
@@ -109,8 +119,8 @@ const StageInner: React.FC<InnerProps> = ({ shotId, shots, dofTable, createWorld
     };
   }, [fx]);
 
-  // Draft and look modes use multisampling=0 for fast CPU Swangle; final uses 4.
-  const msaa = cfg.mode === "final" ? 4 : 0;
+  // Draft uses msaa=0 without depth passes; look/final use msaa=4 so InkPass & LensBlur depth buffers avoid feedback loops.
+  const msaa = cfg.mode === "draft" && !cfg.ink && !cfg.lens ? 0 : 4;
 
   const post = useMemo(
     () => (
@@ -177,7 +187,7 @@ export const Stage25D: React.FC<Stage25DProps> = ({
   renderInfoOverlay,
 }) => {
   const f = useCurrentFrame();
-  const { width } = useVideoConfig();
+  const { width, height } = useVideoConfig();
   const cfg = useMemo(() => resolvePostConfig(renderMode), [renderMode]);
   const layers = computeCrossfadeLayers(shots, xfade, f);
   const flash = flashAt >= 0 && f >= flashAt && f < flashAt + 4 ? [1, 0.75, 0.45, 0.2][f - flashAt] : 0;
@@ -190,8 +200,8 @@ export const Stage25D: React.FC<Stage25DProps> = ({
       {layers.map((l, i) => (
         <AbsoluteFill key={i ? "over" : "base"} style={{ opacity: l.alpha }}>
           <ThreeCanvas
-            width={1080}
-            height={1920}
+            width={width}
+            height={height}
             {...(cfg.dpr ? { dpr: cfg.dpr } : {})}
             shadows
             gl={{
