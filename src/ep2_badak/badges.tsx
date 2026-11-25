@@ -1,25 +1,16 @@
 import React from "react";
 import { interpolate, useVideoConfig } from "remotion";
-import { SHOTS } from "./story";
+import { getActiveShot } from "./story";
+import { THEME } from "./theme";
 
-/**
- * Educational UI Badges component strictly adhering to RULES.md:
- * - Positioned at safe zone top: 14%–19% (clearance > 120px from subtitle at bottom 19%)
- * - Clean UPPERCASE typography, concise 2–4 words (NEVER truncated with '...')
- * - Zero unicode emojis (prevents Ubuntu Linux tofu boxes)
- * - High-contrast bordered pill styling with vibrant accent color
- */
 export const EducationalBadges: React.FC<{ frame: number }> = ({ frame }) => {
   const { width } = useVideoConfig();
   const isPreview = width <= 540;
+  const shot = getActiveShot(frame);
 
-  const shot = SHOTS.find((s) => frame >= s.startFrame && frame <= s.endFrame) || SHOTS[0];
-  if (!shot || !shot.badge) return null;
+  const shotLocalFrame = frame - shot.start;
+  const shotDuration = shot.end - shot.start;
 
-  const shotLocalFrame = frame - shot.startFrame;
-  const shotDuration = shot.endFrame - shot.startFrame;
-
-  // Snappy enter and exit
   const enterProgress = Math.min(1, shotLocalFrame / 2);
   const exitProgress = Math.max(0, (shotDuration - shotLocalFrame) / 2);
   const opacity = Math.min(enterProgress, exitProgress);
@@ -55,30 +46,24 @@ export const EducationalBadges: React.FC<{ frame: number }> = ({ frame }) => {
           gap: isPreview ? "10px" : "18px",
           background: "#FFFFFF",
           border: `${borderWidth}px solid #0F172A`,
-          boxShadow: isPreview
-            ? "0 4px 0 #0F172A"
-            : "0 8px 0 #0F172A",
+          boxShadow: isPreview ? "0 4px 0 #0F172A" : "0 8px 0 #0F172A",
           borderRadius: isPreview ? "22px" : "40px",
           padding: `${paddingV}px ${paddingH}px`,
         }}
       >
-        {/* Pulsing Colored Accent Dot */}
         <div
           style={{
             width: dotSize,
             height: dotSize,
             borderRadius: "50%",
-            background: shot.accentColor,
+            background: THEME.accent.success,
             border: `${isPreview ? 1.5 : 2.5}px solid #0F172A`,
             flexShrink: 0,
           }}
         />
-
-        {/* Short, crisp UPPERCASE badge text */}
         <span
           style={{
-            fontFamily:
-              '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            fontFamily: THEME.font,
             fontWeight: 900,
             fontSize: `${fontSize}px`,
             color: "#0F172A",

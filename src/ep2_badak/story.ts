@@ -1,541 +1,97 @@
-import { ShotDef } from "./types";
+export const TOTAL_FRAMES = 3625;
 
-export const TOTAL_FRAMES = 3625; // 120.84 seconds @ 30 FPS
+export type SceneMode =
+  | "scene1_hook"
+  | "scene2_map"
+  | "scene3_krakatau"
+  | "scene4_truck"
+  | "scene5_musofa"
+  | "scene6_distance"
+  | "scene7_adaptation"
+  | "scene8_langkap"
+  | "scene9_conservation"
+  | "scene10_outro";
 
-/**
- * 40 Micro-Shots Storyboard for Episode 2: Badak Jawa di Ujung Kulon
- * Kok Iso Yo? Studio — 2.5D Cinematic Cartoon Engine
- *
- * Requirements:
- * - 40 distinct shots with varied camera movements & angles
- * - Strictly synchronized with 33 Whisper subtitle cues & VO audio
- * - Half-open intervals [startFrame, endFrame)
- * - Safe UI badges (uppercase, no emojis, 2-4 words, no ellipsis)
- */
-
-export interface ExtendedShotDef extends ShotDef {
-  worldType: "jungle" | "javamap" | "krakatau" | "truck" | "musofa" | "savanna" | "langkap" | "outro";
-  cameraAngle: string;
+export interface ShotSpec {
+  id: number;
+  start: number;
+  end: number;
+  mode: SceneMode;
+  badge: string;
+  camZoom: [number, number];
+  camX: [number, number];
+  camY: [number, number];
 }
 
-export const SHOTS: ExtendedShotDef[] = [
-  // =========================================================================
-  // SCENE 1: HOOK (f0 – f492)
-  // =========================================================================
-  {
-    id: 1,
-    startFrame: 0,
-    endFrame: 75,
-    category: "rhino_habitat",
-    worldType: "jungle",
-    cameraAngle: "aerial_flyover",
-    subtitle: "Badak Jawa di Ujung Kulon sekarang cuma tersisa puluhan ekor di seluruh dunia.",
-    badge: "POPULASI < 80 EKOR",
-    bgGradient: "linear-gradient(180deg, #BAE6FD 0%, #E0F2FE 45%, #86EFAC 100%)",
-    accentColor: "#16A34A",
-  },
-  {
-    id: 2,
-    startFrame: 75,
-    endFrame: 156,
-    category: "rhino_habitat",
-    worldType: "jungle",
-    cameraAngle: "crane_down",
-    subtitle: "Badak Jawa di Ujung Kulon sekarang cuma tersisa puluhan ekor di seluruh dunia.",
-    badge: "POPULASI < 80 EKOR",
-    bgGradient: "linear-gradient(180deg, #BAE6FD 0%, #E0F2FE 45%, #86EFAC 100%)",
-    accentColor: "#16A34A",
-  },
-  {
-    id: 3,
-    startFrame: 156,
-    endFrame: 230,
-    category: "relocation_wacana",
-    worldType: "jungle",
-    cameraAngle: "side_track",
-    subtitle: "Tapi anehnya, waktu muncul wacana buat memindahkan mereka ke tempat baru,",
-    badge: "WACANA RELOKASI",
-    bgGradient: "linear-gradient(180deg, #F1F5F9 0%, #E2E8F0 100%)",
-    accentColor: "#F59E0B",
-  },
-  {
-    id: 4,
-    startFrame: 230,
-    endFrame: 306,
-    category: "relocation_wacana",
-    worldType: "jungle",
-    cameraAngle: "front_34",
-    subtitle: "Tapi anehnya, waktu muncul wacana buat memindahkan mereka ke tempat baru,",
-    badge: "WACANA RELOKASI",
-    bgGradient: "linear-gradient(180deg, #F1F5F9 0%, #E2E8F0 100%)",
-    accentColor: "#F59E0B",
-  },
-  {
-    id: 5,
-    startFrame: 306,
-    endFrame: 368,
-    category: "scientist_reject",
-    worldType: "jungle",
-    cameraAngle: "low_angle",
-    subtitle: "banyak ilmuwan dan aktivis konservasi justru menolak keras.",
-    badge: "DITOLAK ILMUWAN",
-    bgGradient: "linear-gradient(180deg, #FEF2F2 0%, #FEE2E2 100%)",
-    accentColor: "#EF4444",
-  },
-  {
-    id: 6,
-    startFrame: 368,
-    endFrame: 432,
-    category: "scientist_reject",
-    worldType: "jungle",
-    cameraAngle: "push_in",
-    subtitle: "banyak ilmuwan dan aktivis konservasi justru menolak keras.",
-    badge: "DITOLAK ILMUWAN",
-    bgGradient: "linear-gradient(180deg, #FEF2F2 0%, #FEE2E2 100%)",
-    accentColor: "#EF4444",
-  },
-  {
-    id: 7,
-    startFrame: 432,
-    endFrame: 492,
-    category: "kok_iso_yo",
-    worldType: "jungle",
-    cameraAngle: "closeup",
-    subtitle: "Lho, kok iso yo?",
-    badge: "KOK ISO YO?",
-    bgGradient: "linear-gradient(180deg, #E0F2FE 0%, #BAE6FD 100%)",
-    accentColor: "#0284C7",
-  },
+/**
+ * 43 Distinct Visual Shots (~1.8s–3.6s each) mapped strictly to the 33 Whisper cues in subtitles.tsx.
+ * Every shot changes framing, viewpoint, close-up/wide scale, or mechanism—never sitting static!
+ */
+export const SHOTS: ShotSpec[] = [
+  // ================= SCENE 1: HOOK [0, 492) =================
+  { id: 1, start: 0, end: 78, mode: "scene1_hook", badge: "UJUNG KULON", camZoom: [1.08, 1.0], camX: [0, 0], camY: [-30, 0] },
+  { id: 2, start: 78, end: 156, mode: "scene1_hook", badge: "TERSISA PULUHAN EKOR", camZoom: [1.0, 1.05], camX: [16, -12], camY: [0, 6] },
+  { id: 3, start: 156, end: 234, mode: "scene1_hook", badge: "WACANA RELOKASI", camZoom: [1.0, 1.06], camX: [-12, 10], camY: [0, -8] },
+  { id: 4, start: 234, end: 306, mode: "scene1_hook", badge: "TEMPAT BARU?", camZoom: [1.05, 1.0], camX: [14, -14], camY: [0, 0] },
+  { id: 5, start: 306, end: 372, mode: "scene1_hook", badge: "PENOLAKAN AHLI", camZoom: [1.04, 1.0], camX: [0, 0], camY: [10, 0] },
+  { id: 6, start: 372, end: 432, mode: "scene1_hook", badge: "DITOLAK KERAS", camZoom: [1.0, 1.07], camX: [0, -8], camY: [0, -6] },
+  { id: 7, start: 432, end: 492, mode: "scene1_hook", badge: "KOK ISO YO?", camZoom: [1.0, 1.10], camX: [-10, 10], camY: [0, 8] },
 
-  // =========================================================================
-  // SCENE 2: RELOKASI KE JATIM (f492 – f942)
-  // =========================================================================
-  {
-    id: 8,
-    startFrame: 492,
-    endFrame: 600,
-    category: "java_map_start",
-    worldType: "javamap",
-    cameraAngle: "map_west",
-    subtitle: "Jadi baru-baru ini ramai usulan memindahkan sebagian Badak Jawa dari Taman Nasional Ujung Kulon di Banten,",
-    badge: "TITIK AWAL BANTEN",
-    bgGradient: "linear-gradient(180deg, #BAE6FD 0%, #E0F2FE 45%, #7DD3FC 100%)",
-    accentColor: "#0284C7",
-  },
-  {
-    id: 9,
-    startFrame: 600,
-    endFrame: 708,
-    category: "java_map_start",
-    worldType: "javamap",
-    cameraAngle: "map_track",
-    subtitle: "Jadi baru-baru ini ramai usulan memindahkan sebagian Badak Jawa dari Taman Nasional Ujung Kulon di Banten,",
-    badge: "TITIK AWAL BANTEN",
-    bgGradient: "linear-gradient(180deg, #BAE6FD 0%, #E0F2FE 45%, #7DD3FC 100%)",
-    accentColor: "#0284C7",
-  },
-  {
-    id: 10,
-    startFrame: 708,
-    endFrame: 828,
-    category: "java_map_route",
-    worldType: "javamap",
-    cameraAngle: "map_east",
-    subtitle: "ke Taman Nasional Alas Purwo di Banyuwangi, Jawa Timur.",
-    badge: "TUJUAN BANYUWANGI",
-    bgGradient: "linear-gradient(180deg, #BAE6FD 0%, #E0F2FE 45%, #7DD3FC 100%)",
-    accentColor: "#F97316",
-  },
-  {
-    id: 11,
-    startFrame: 828,
-    endFrame: 888,
-    category: "noble_goal",
-    worldType: "javamap",
-    cameraAngle: "map_wide",
-    subtitle: "Tujuannya terdengar mulia.",
-    badge: "TUJUAN MULIA",
-    bgGradient: "linear-gradient(180deg, #FEF9C3 0%, #FEF08A 60%, #BBF7D0 100%)",
-    accentColor: "#EAB308",
-  },
-  {
-    id: 12,
-    startFrame: 888,
-    endFrame: 942,
-    category: "second_habitat",
-    worldType: "javamap",
-    cameraAngle: "map_wide",
-    subtitle: "Bikin habitat kedua.",
-    badge: "HABITAT KEDUA",
-    bgGradient: "linear-gradient(180deg, #F0FDF4 0%, #DCFCE7 100%)",
-    accentColor: "#16A34A",
-  },
+  // ================= SCENE 2: RELOKASI PETA JAWA [492, 942) =================
+  { id: 8, start: 492, end: 600, mode: "scene2_map", badge: "TITIK AWAL: BANTEN", camZoom: [1.02, 1.0], camX: [14, 0], camY: [0, 0] },
+  { id: 9, start: 600, end: 708, mode: "scene2_map", badge: "LINTAS PULAU JAWA", camZoom: [1.0, 1.03], camX: [0, -10], camY: [0, 0] },
+  { id: 10, start: 708, end: 828, mode: "scene2_map", badge: "ALAS PURWO, JATIM", camZoom: [1.0, 1.05], camX: [-8, 0], camY: [0, 6] },
+  { id: 11, start: 828, end: 888, mode: "scene2_map", badge: "TUJUAN MULIA", camZoom: [1.04, 1.0], camX: [0, 0], camY: [6, 0] },
+  { id: 12, start: 888, end: 942, mode: "scene2_map", badge: "HABITAT KEDUA", camZoom: [1.0, 1.04], camX: [0, 0], camY: [0, -6] },
 
-  // =========================================================================
-  // SCENE 3: ANAK KRAKATAU & TSUNAMI (f942 – f1200)
-  // =========================================================================
-  {
-    id: 13,
-    startFrame: 942,
-    endFrame: 1015,
-    category: "krakatau_eruption",
-    worldType: "krakatau",
-    cameraAngle: "volcano_wide",
-    subtitle: "Karena kalau suatu saat Gunung Anak Krakatau meletus dan memicu tsunami besar,",
-    badge: "ERUPSI KRAKATAU",
-    bgGradient: "linear-gradient(180deg, #FEF2F2 0%, #FEE2E2 50%, #38BDF8 100%)",
-    accentColor: "#DC2626",
-  },
-  {
-    id: 14,
-    startFrame: 1015,
-    endFrame: 1092,
-    category: "krakatau_eruption",
-    worldType: "krakatau",
-    cameraAngle: "landslide_track",
-    subtitle: "Karena kalau suatu saat Gunung Anak Krakatau meletus dan memicu tsunami besar,",
-    badge: "LONGSOR & DISPLASI",
-    bgGradient: "linear-gradient(180deg, #FEF2F2 0%, #FEE2E2 50%, #38BDF8 100%)",
-    accentColor: "#DC2626",
-  },
-  {
-    id: 15,
-    startFrame: 1092,
-    endFrame: 1200,
-    category: "extinction_shield",
-    worldType: "krakatau",
-    cameraAngle: "wave_surge",
-    subtitle: "populasi badak di Ujung Kulon nggak ikut punah sekaligus.",
-    badge: "CEGAH KEPUNAHAN",
-    bgGradient: "linear-gradient(180deg, #E0F2FE 0%, #BAE6FD 100%)",
-    accentColor: "#0284C7",
-  },
+  // ================= SCENE 3: ANAK KRAKATAU & TSUNAMI [942, 1200) =================
+  { id: 13, start: 942, end: 1018, mode: "scene3_krakatau", badge: "ANAK KRAKATAU", camZoom: [1.0, 1.06], camX: [0, 0], camY: [14, -8] },
+  { id: 14, start: 1018, end: 1092, mode: "scene3_krakatau", badge: "LONGSOR & DISPLASI", camZoom: [1.04, 1.0], camX: [-14, 12], camY: [0, 8] },
+  { id: 15, start: 1092, end: 1200, mode: "scene3_krakatau", badge: "CEGAH KEPUNAHAN", camZoom: [1.05, 1.0], camX: [-16, 8], camY: [0, 0] },
 
-  // =========================================================================
-  // SCENE 4: RISIKO PEMINDAHAN (f1200 – f1608)
-  // =========================================================================
-  {
-    id: 16,
-    startFrame: 1200,
-    endFrame: 1290,
-    category: "not_livestock",
-    worldType: "truck",
-    cameraAngle: "truck_side",
-    subtitle: "Masalahnya secara sains, memindah Badak Jawa itu bukan kayak mindahin hewan ternak.",
-    badge: "BUKAN TERNAK",
-    bgGradient: "linear-gradient(180deg, #FFFBEB 0%, #FEF3C7 100%)",
-    accentColor: "#D97706",
-  },
-  {
-    id: 17,
-    startFrame: 1290,
-    endFrame: 1386,
-    category: "not_livestock",
-    worldType: "truck",
-    cameraAngle: "crate_medium",
-    subtitle: "Masalahnya secara sains, memindah Badak Jawa itu bukan kayak mindahin hewan ternak.",
-    badge: "BUKAN TERNAK",
-    bgGradient: "linear-gradient(180deg, #FFFBEB 0%, #FEF3C7 100%)",
-    accentColor: "#D97706",
-  },
-  {
-    id: 18,
-    startFrame: 1386,
-    endFrame: 1440,
-    category: "life_at_stake",
-    worldType: "truck",
-    cameraAngle: "wheel_low",
-    subtitle: "Taruhannya nyawa.",
-    badge: "TARUHAN NYAWA",
-    bgGradient: "linear-gradient(180deg, #FEF2F2 0%, #FCA5A5 100%)",
-    accentColor: "#DC2626",
-  },
-  {
-    id: 19,
-    startFrame: 1440,
-    endFrame: 1520,
-    category: "rhino_stress",
-    worldType: "truck",
-    cameraAngle: "telemetry_close",
-    subtitle: "Badak Jawa adalah satwa yang super pemalu dan sangat rentan stres berat.",
-    badge: "STRES EKSTREM",
-    bgGradient: "linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%)",
-    accentColor: "#EF4444",
-  },
-  {
-    id: 20,
-    startFrame: 1520,
-    endFrame: 1608,
-    category: "rhino_stress",
-    worldType: "truck",
-    cameraAngle: "telemetry_alert",
-    subtitle: "Badak Jawa adalah satwa yang super pemalu dan sangat rentan stres berat.",
-    badge: "185 BPM STRES",
-    bgGradient: "linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%)",
-    accentColor: "#EF4444",
-  },
+  // ================= SCENE 4: RISIKO PEMINDAHAN [1200, 1608) =================
+  { id: 16, start: 1200, end: 1295, mode: "scene4_truck", badge: "BUKAN TERNAK", camZoom: [1.03, 1.0], camX: [0, 0], camY: [0, 0] },
+  { id: 17, start: 1295, end: 1386, mode: "scene4_truck", badge: "PROSES ANGKUT", camZoom: [1.0, 1.05], camX: [-16, 16], camY: [0, 0] },
+  { id: 18, start: 1386, end: 1440, mode: "scene4_truck", badge: "TARUHAN NYAWA", camZoom: [1.06, 1.0], camX: [8, -8], camY: [10, 0] },
+  { id: 19, start: 1440, end: 1520, mode: "scene4_truck", badge: "SATWA PEMALU", camZoom: [1.0, 1.06], camX: [0, 0], camY: [0, 8] },
+  { id: 20, start: 1520, end: 1608, mode: "scene4_truck", badge: "RENTAN STRES BERAT", camZoom: [1.05, 1.0], camX: [0, 0], camY: [6, 0] },
 
-  // =========================================================================
-  // SCENE 5: KASUS MUSOFA (f1608 – f1842)
-  // =========================================================================
-  {
-    id: 21,
-    startFrame: 1608,
-    endFrame: 1680,
-    category: "real_proof",
-    worldType: "musofa",
-    cameraAngle: "doc_card",
-    subtitle: "Buktinya nyata.",
-    badge: "BUKTI NYATA",
-    bgGradient: "linear-gradient(180deg, #F8FAFC 0%, #E2E8F0 100%)",
-    accentColor: "#334155",
-  },
-  {
-    id: 22,
-    startFrame: 1680,
-    endFrame: 1760,
-    category: "musofa_case",
-    worldType: "musofa",
-    cameraAngle: "memorial_rhino",
-    subtitle: "Baru tahun lalu, seekor badak jantan bernama Musofa mati hanya beberapa hari setelah dipindahkan.",
-    badge: "KASUS MUSOFA",
-    bgGradient: "linear-gradient(180deg, #F1F5F9 0%, #E2E8F0 100%)",
-    accentColor: "#DC2626",
-  },
-  {
-    id: 23,
-    startFrame: 1760,
-    endFrame: 1842,
-    category: "musofa_case",
-    worldType: "musofa",
-    cameraAngle: "flatline_close",
-    subtitle: "Baru tahun lalu, seekor badak jantan bernama Musofa mati hanya beberapa hari setelah dipindahkan.",
-    badge: "KASUS MUSOFA",
-    bgGradient: "linear-gradient(180deg, #F1F5F9 0%, #E2E8F0 100%)",
-    accentColor: "#DC2626",
-  },
+  // ================= SCENE 5: KASUS MUSOFA [1608, 1842) =================
+  { id: 21, start: 1608, end: 1644, mode: "scene5_musofa", badge: "BUKTI NYATA", camZoom: [1.05, 1.0], camX: [0, 0], camY: [-10, 0] },
+  { id: 22, start: 1644, end: 1745, mode: "scene5_musofa", badge: "KASUS MUSOFA", camZoom: [1.0, 1.05], camX: [12, -12], camY: [0, 4] },
+  { id: 23, start: 1745, end: 1842, mode: "scene5_musofa", badge: "MATI PASCA PINDAH", camZoom: [1.04, 1.0], camX: [-8, 0], camY: [0, 0] },
 
-  // =========================================================================
-  // SCENE 6: PERBANDINGAN JARAK (f1842 – f2076)
-  // =========================================================================
-  {
-    id: 24,
-    startFrame: 1842,
-    endFrame: 1960,
-    category: "short_distance",
-    worldType: "javamap",
-    cameraAngle: "map_local",
-    subtitle: "Padahal, jarak pindahnya masih di dalam kawasan Ujung Kulon sendiri,",
-    badge: "JARAK LOKAL <15 KM",
-    bgGradient: "linear-gradient(180deg, #BAE6FD 0%, #E0F2FE 45%, #7DD3FC 100%)",
-    accentColor: "#16A34A",
-  },
-  {
-    id: 25,
-    startFrame: 1960,
-    endFrame: 2076,
-    category: "distance_contrast",
-    worldType: "javamap",
-    cameraAngle: "map_contrast",
-    subtitle: "belum menyeberang ratusan kilometer ke Jawa Timur.",
-    badge: "RUTE JAUH ~1.000 KM",
-    bgGradient: "linear-gradient(180deg, #BAE6FD 0%, #E0F2FE 45%, #7DD3FC 100%)",
-    accentColor: "#EF4444",
-  },
+  // ================= SCENE 6: PERBANDINGAN JARAK [1842, 2076) =================
+  { id: 24, start: 1842, end: 1930, mode: "scene6_distance", badge: "PINDAH LOKAL < 15 KM", camZoom: [1.0, 1.04], camX: [8, -6], camY: [0, 0] },
+  { id: 25, start: 1930, end: 1995, mode: "scene6_distance", badge: "DALAM KAWASAN", camZoom: [1.03, 1.0], camX: [-6, 0], camY: [0, 0] },
+  { id: 26, start: 1995, end: 2076, mode: "scene6_distance", badge: "JAUH ~1.000 KM", camZoom: [1.02, 1.0], camX: [0, 0], camY: [0, 0] },
 
-  // =========================================================================
-  // SCENE 7: ADAPTASI HABITAT (f2076 – f2520)
-  // =========================================================================
-  {
-    id: 26,
-    startFrame: 2076,
-    endFrame: 2142,
-    category: "transport_hazard",
-    worldType: "savanna",
-    cameraAngle: "savanna_wide",
-    subtitle: "Selain risiko stres di perjalanan,",
-    badge: "GETARAN & PANAS",
-    bgGradient: "linear-gradient(180deg, #FFF7ED 0%, #FFEDD5 100%)",
-    accentColor: "#EA580C",
-  },
-  {
-    id: 27,
-    startFrame: 2142,
-    endFrame: 2235,
-    category: "global_studies",
-    worldType: "savanna",
-    cameraAngle: "savanna_stats",
-    subtitle: "studi konservasi juga menunjukkan mayoritas pemindahan satwa liar ke habitat asing sering gagal.",
-    badge: ">65% GAGAL",
-    bgGradient: "linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%)",
-    accentColor: "#DC2626",
-  },
-  {
-    id: 28,
-    startFrame: 2235,
-    endFrame: 2334,
-    category: "global_studies",
-    worldType: "savanna",
-    cameraAngle: "savanna_rhino",
-    subtitle: "studi konservasi juga menunjukkan mayoritas pemindahan satwa liar ke habitat asing sering gagal.",
-    badge: ">65% GAGAL",
-    bgGradient: "linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%)",
-    accentColor: "#DC2626",
-  },
-  {
-    id: 29,
-    startFrame: 2334,
-    endFrame: 2442,
-    category: "adaptation_fail",
-    worldType: "savanna",
-    cameraAngle: "food_disruption",
-    subtitle: "Mereka susah beradaptasi, pola makannya terganggu,",
-    badge: "GAGAL ADAPTASI",
-    bgGradient: "linear-gradient(180deg, #FEF3C7 0%, #FDE68A 100%)",
-    accentColor: "#D97706",
-  },
-  {
-    id: 30,
-    startFrame: 2442,
-    endFrame: 2520,
-    category: "reproduction_fail",
-    worldType: "savanna",
-    cameraAngle: "repro_fail",
-    subtitle: "dan akhirnya gagal berkembang biak.",
-    badge: "GAGAL REPRODUKSI",
-    bgGradient: "linear-gradient(180deg, #FDF2F8 0%, #FCE7F3 100%)",
-    accentColor: "#DB2777",
-  },
+  // ================= SCENE 7: ADAPTASI HABITAT [2076, 2520) =================
+  { id: 27, start: 2076, end: 2142, mode: "scene7_adaptation", badge: "STRES PERJALANAN", camZoom: [1.0, 1.05], camX: [-12, 12], camY: [0, 0] },
+  { id: 28, start: 2142, end: 2240, mode: "scene7_adaptation", badge: "MAYORITAS GAGAL", camZoom: [1.04, 1.0], camX: [0, 0], camY: [-8, 0] },
+  { id: 29, start: 2240, end: 2334, mode: "scene7_adaptation", badge: "HABITAT ASING", camZoom: [1.0, 1.05], camX: [14, -14], camY: [0, 4] },
+  { id: 30, start: 2334, end: 2442, mode: "scene7_adaptation", badge: "POLA MAKAN TERGANGGU", camZoom: [1.05, 1.0], camX: [-10, 10], camY: [6, 0] },
+  { id: 31, start: 2442, end: 2520, mode: "scene7_adaptation", badge: "GAGAL BERKEMBANG BIAK", camZoom: [1.0, 1.05], camX: [0, 0], camY: [0, 6] },
 
-  // =========================================================================
-  // SCENE 8: INVASI LANGKAP (f2520 – f2928)
-  // =========================================================================
-  {
-    id: 31,
-    startFrame: 2520,
-    endFrame: 2605,
-    category: "home_challenges",
-    worldType: "jungle",
-    cameraAngle: "home_challenge",
-    subtitle: "Di sisi lain, rumah asli mereka di Ujung Kulon sendiri sebenarnya masih punya PR besar.",
-    badge: "PR UJUNG KULON",
-    bgGradient: "linear-gradient(180deg, #E0F2FE 0%, #BAE6FD 60%, #86EFAC 100%)",
-    accentColor: "#16A34A",
-  },
-  {
-    id: 32,
-    startFrame: 2605,
-    endFrame: 2694,
-    category: "home_challenges",
-    worldType: "langkap",
-    cameraAngle: "ground_understory",
-    subtitle: "Di sisi lain, rumah asli mereka di Ujung Kulon sendiri sebenarnya masih punya PR besar.",
-    badge: "PR UJUNG KULON",
-    bgGradient: "linear-gradient(180deg, #E0F2FE 0%, #BAE6FD 60%, #86EFAC 100%)",
-    accentColor: "#16A34A",
-  },
-  {
-    id: 33,
-    startFrame: 2694,
-    endFrame: 2826,
-    category: "langkap_invasion",
-    worldType: "langkap",
-    cameraAngle: "langkap_tilt",
-    subtitle: "Mulai dari invasi tanaman langkap yang mematikan tumbuhan pakan badak,",
-    badge: "INVASI LANGKAP",
-    bgGradient: "linear-gradient(180deg, #F0FDF4 0%, #DCFCE7 100%)",
-    accentColor: "#15803D",
-  },
-  {
-    id: 34,
-    startFrame: 2826,
-    endFrame: 2928,
-    category: "buffer_threat",
-    worldType: "langkap",
-    cameraAngle: "buffer_threat",
-    subtitle: "sampai ancaman kerusakan di sekitar kawasan penyangga.",
-    badge: "ANCAMAN PENYANGGA",
-    bgGradient: "linear-gradient(180deg, #FEF2F2 0%, #FEE2E2 100%)",
-    accentColor: "#EF4444",
-  },
+  // ================= SCENE 8: INVASI LANGKAP [2520, 2928) =================
+  { id: 32, start: 2520, end: 2605, mode: "scene8_langkap", badge: "PR UJUNG KULON", camZoom: [1.04, 1.0], camX: [14, -12], camY: [0, 0] },
+  { id: 33, start: 2605, end: 2694, mode: "scene8_langkap", badge: "INVASI LANGKAP", camZoom: [1.0, 1.05], camX: [0, 0], camY: [18, -18] },
+  { id: 34, start: 2694, end: 2826, mode: "scene8_langkap", badge: "CAHAYA TERBLOKIR", camZoom: [1.04, 1.0], camX: [-10, 10], camY: [-10, 8] },
+  { id: 35, start: 2826, end: 2928, mode: "scene8_langkap", badge: "ZONA PENYANGGA", camZoom: [1.0, 1.05], camX: [12, -16], camY: [0, 0] },
 
-  // =========================================================================
-  // SCENE 9: KONSERVASI (f2928 – f3372)
-  // =========================================================================
-  {
-    id: 35,
-    startFrame: 2928,
-    endFrame: 3000,
-    category: "expert_consensus",
-    worldType: "jungle",
-    cameraAngle: "balance_scale",
-    subtitle: "Makanya banyak ahli menilai,",
-    badge: "KONSENSUS AHLI",
-    bgGradient: "linear-gradient(180deg, #F0FDF4 0%, #DCFCE7 100%)",
-    accentColor: "#16A34A",
-  },
-  {
-    id: 36,
-    startFrame: 3000,
-    endFrame: 3108,
-    category: "fatal_risk",
-    worldType: "jungle",
-    cameraAngle: "risk_compare",
-    subtitle: "daripada ambil risiko fatal memindahkan mereka jauh-jauh,",
-    badge: "HINDARI RISIKO",
-    bgGradient: "linear-gradient(180deg, #FEF2F2 0%, #FEE2E2 100%)",
-    accentColor: "#DC2626",
-  },
-  {
-    id: 37,
-    startFrame: 3108,
-    endFrame: 3210,
-    category: "rational_choice",
-    worldType: "jungle",
-    cameraAngle: "budget_alloc",
-    subtitle: "jauh lebih masuk akal, kalau anggaran dan tenaganya,",
-    badge: "LEBIH MASUK AKAL",
-    bgGradient: "linear-gradient(180deg, #FEF9C3 0%, #FEF08A 100%)",
-    accentColor: "#EAB308",
-  },
-  {
-    id: 38,
-    startFrame: 3210,
-    endFrame: 3372,
-    category: "habitat_restored",
-    worldType: "jungle",
-    cameraAngle: "family_graze",
-    subtitle: "difokuskan buat memperbaiki dan menjaga ketat rumah asli mereka di Ujung Kulon.",
-    badge: "PERKUAT HABITAT",
-    bgGradient: "linear-gradient(180deg, #E0F2FE 0%, #BAE6FD 45%, #86EFAC 100%)",
-    accentColor: "#16A34A",
-  },
+  // ================= SCENE 9: KONSERVASI [2928, 3372) =================
+  { id: 36, start: 2928, end: 3000, mode: "scene9_conservation", badge: "PANDANGAN AHLI", camZoom: [1.04, 1.0], camX: [0, 0], camY: [-8, 0] },
+  { id: 37, start: 3000, end: 3108, mode: "scene9_conservation", badge: "HINDARI RISIKO FATAL", camZoom: [1.0, 1.05], camX: [-8, 8], camY: [0, 4] },
+  { id: 38, start: 3108, end: 3210, mode: "scene9_conservation", badge: "FOKUS ANGGARAN & SDM", camZoom: [1.04, 1.0], camX: [12, -10], camY: [0, 0] },
+  { id: 39, start: 3210, end: 3290, mode: "scene9_conservation", badge: "PERBAIKI & JAGA", camZoom: [1.0, 1.05], camX: [-12, 12], camY: [0, 0] },
+  { id: 40, start: 3290, end: 3372, mode: "scene9_conservation", badge: "PERKUAT HABITAT", camZoom: [1.0, 1.06], camX: [-14, 14], camY: [0, 6] },
 
-  // =========================================================================
-  // SCENE 10: OUTRO (f3372 – f3625)
-  // =========================================================================
-  {
-    id: 39,
-    startFrame: 3372,
-    endFrame: 3498,
-    category: "split_option_a",
-    worldType: "outro",
-    cameraAngle: "split_stage",
-    subtitle: "Menurutmu gimana? Lebih baik tetap dicoba dipindah demi cadangan,",
-    badge: "OPSI A VS OPSI B",
-    bgGradient: "linear-gradient(180deg, #0F172A 0%, #1E293B 100%)",
-    accentColor: "#F59E0B",
-  },
-  {
-    id: 40,
-    startFrame: 3498,
-    endFrame: 3625,
-    category: "split_cta",
-    worldType: "outro",
-    cameraAngle: "cta_snap",
-    subtitle: "atau cukup perkuat habitat aslinya saja? Tulis di komentar!",
-    badge: "TULIS KOMENTAR",
-    bgGradient: "linear-gradient(180deg, #0F172A 0%, #1E293B 100%)",
-    accentColor: "#22C55E",
-  },
+  // ================= SCENE 10: OUTRO [3372, 3625) =================
+  { id: 41, start: 3372, end: 3414, mode: "scene10_outro", badge: "MENURUTMU GIMANA?", camZoom: [1.05, 1.0], camX: [0, 0], camY: [0, 0] },
+  { id: 42, start: 3414, end: 3498, mode: "scene10_outro", badge: "OPSI A: PINDAH", camZoom: [1.0, 1.04], camX: [10, -8], camY: [0, 0] },
+  { id: 43, start: 3498, end: 3625, mode: "scene10_outro", badge: "TULIS DI KOMENTAR", camZoom: [1.0, 1.04], camX: [-8, 0], camY: [0, -6] },
 ];
+
+export const getActiveShot = (frame: number): ShotSpec => {
+  return SHOTS.find((s) => frame >= s.start && frame < s.end) ?? SHOTS[SHOTS.length - 1];
+};
