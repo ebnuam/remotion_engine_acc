@@ -25,6 +25,7 @@ build/
 
 # Logs & OS files
 *.log
+dashboard/data/
 .DS_Store
 Thumbs.db
 Desktop.ini

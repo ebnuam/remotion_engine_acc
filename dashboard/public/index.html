@@ -134,6 +134,18 @@
     .pin-box { width: 340px; background: var(--surface); border: 1px solid var(--border); padding: 24px; border-radius: 6px; }
     .status-msg { margin-top: 10px; font-size: 13px; color: #86efac; font-family: monospace; }
     .err-msg { color: #fca5a5; }
+    .meter-row { margin-bottom: 12px; }
+    .meter-head { display: flex; justify-content: space-between; font-size: 12px; font-family: monospace; margin-bottom: 4px; }
+    .meter-track { height: 10px; background: #0c130f; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+    .meter-fill { height: 100%; background: var(--accent); transition: width 0.25s ease; }
+    .meter-fill.warn { background: var(--amber); }
+    .meter-fill.crit { background: var(--red); }
+    .badge-status { display: inline-block; padding: 4px 10px; border-radius: 4px; font-family: monospace; font-size: 12px; font-weight: 700; }
+    .badge-AMAN { background: #14532d; color: #86efac; border: 1px solid #22c55e; }
+    .badge-MENDEKATI_LIMIT { background: #78350f; color: #fde68a; border: 1px solid #f59e0b; }
+    .badge-LIMIT_TERCAPAI, .badge-DIPAUZE { background: #7f1d1d; color: #fecaca; border: 1px solid #ef4444; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -164,6 +176,7 @@
       <button onclick="switchTab('qa', this)">QA Sheets &amp; Naskah</button>
       <button onclick="switchTab('prompt', this)">Prompt &amp; Upload Audio</button>
       <button onclick="switchTab('jobs', this)">Render &amp; Revisi</button>
+      <button onclick="switchTab('quota', this); loadQuota()">Kuota &amp; Limit AI</button>
       <button onclick="openSettings()" title="Atur URL API VPS & PIN">⚙ API / PIN</button>
     </nav>
   </header>
@@ -281,6 +294,117 @@
         </div>
       </div>
     </section>
+
+    <!-- TAB 6: AI QUOTA & LIMITS -->
+    <section id="tab-quota" class="tab">
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px">
+          <div>
+            <h3 style="margin-bottom:4px">Status Kuota AI &amp; Guardrail VPS</h3>
+            <div id="quotaSubtitle" class="meta" style="margin:0">Memuat kuota...</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+            <span id="quotaStatusBadge" class="badge-status badge-AMAN">AMAN</span>
+            <button id="pauseBtn" class="btn warn" onclick="toggleQuotaPause()">Pause Semua Render</button>
+            <button class="btn" onclick="loadQuota(true)">Refresh &amp; Cek Model AI</button>
+          </div>
+        </div>
+        <div id="quotaAlerts" style="margin-top:10px; font-size:13px; font-family:monospace"></div>
+        <div id="quotaMeters" style="margin-top:14px"></div>
+      </div>
+
+      <div class="grid" style="margin-bottom:16px">
+        <div class="card">
+          <h3>Atur Batas Kuota &amp; Model Default</h3>
+          <label>Model AI Default (dari `agy models`)</label>
+          <select id="qDefaultModel"></select>
+          <div class="two-col">
+            <div>
+              <label>Limit Task AI / Hari</label>
+              <input id="qAiTasksLimit" type="number" min="1" />
+            </div>
+            <div>
+              <label>Limit Render Job / Hari</label>
+              <input id="qRenderJobsLimit" type="number" min="1" />
+            </div>
+            <div>
+              <label>Limit Token AI / Bulan</label>
+              <input id="qTokensLimit" type="number" min="1000" step="10000" />
+            </div>
+            <div>
+              <label>Limit TTS Karakter / Bulan</label>
+              <input id="qTtsLimit" type="number" min="100" step="5000" />
+            </div>
+            <div>
+              <label>Budget Bulanan (USD)</label>
+              <input id="qBudgetLimit" type="number" min="0" step="1" />
+            </div>
+            <div>
+              <label>Threshold Peringatan (%)</label>
+              <input id="qWarnPct" type="number" min="10" max="99" />
+            </div>
+            <div>
+              <label>Max Concurrent Render (4 vCPU)</label>
+              <input id="qMaxConc" type="number" min="1" max="4" />
+            </div>
+            <div>
+              <label>Batas Guardrail RAM VPS (%)</label>
+              <input id="qMaxRam" type="number" min="30" max="98" />
+            </div>
+          </div>
+          <label>Proteksi Otomatis Saat Kuota Penuh</label>
+          <select id="qAutoBlock">
+            <option value="true">Aktif — Blokir render baru saat kuota harian/token >= 100%</option>
+            <option value="false">Peringatan saja — Jangan blokir job render</option>
+          </select>
+          <div class="btn-row">
+            <button class="btn primary" onclick="saveQuotaConfig()">Simpan Limit &amp; Model</button>
+            <button class="btn" onclick="resetQuotaCounter('reset_daily')">Reset Harian</button>
+            <button class="btn" onclick="resetQuotaCounter('reset_monthly')">Reset Bulanan</button>
+          </div>
+          <div id="quotaSaveStatus" class="status-msg"></div>
+        </div>
+
+        <div class="card">
+          <h3>Catat Pemakaian / Sinkron Kuota Manual</h3>
+          <div class="two-col">
+            <div>
+              <label>Tambah Task AI</label>
+              <input id="recTasks" type="number" min="0" value="1" />
+            </div>
+            <div>
+              <label>Tambah Token AI</label>
+              <input id="recTokens" type="number" min="0" step="1000" value="15000" />
+            </div>
+            <div>
+              <label>Tambah Karakter TTS</label>
+              <input id="recTts" type="number" min="0" step="500" value="0" />
+            </div>
+            <div>
+              <label>Tambah Estimasi USD</label>
+              <input id="recUsd" type="number" min="0" step="0.05" value="0" />
+            </div>
+          </div>
+          <label>Catatan Pemakaian</label>
+          <input id="recNote" placeholder="Misal: Riset Ep 006 / Generate audio ElevenLabs" />
+          <div class="btn-row">
+            <button class="btn primary" onclick="recordQuotaUsage()">+ Catat Pemakaian</button>
+          </div>
+          <div id="recStatus" class="status-msg"></div>
+
+          <h3 style="margin-top:20px">Slot Kuota Eksternal (Antigravity / TTS / VPS)</h3>
+          <div id="providerCards"></div>
+          <div class="btn-row">
+            <button class="btn" onclick="saveProviders()">Simpan Sisa Kuota Provider</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Riwayat Ledger Pemakaian AI &amp; Render</h3>
+        <pre id="quotaHistory">Belum ada catatan.</pre>
+      </div>
+    </section>
   </main>
 
   <script>
@@ -307,7 +431,9 @@
     }
 
     async function api(url, opts = {}) {
-      if (!API_BASE && window.location.hostname.endsWith("pages.dev")) {
+      const host = window.location.hostname;
+      const isHosted = host.endsWith("pages.dev") || host.endsWith("workers.dev");
+      if (!API_BASE && isHosted) {
         document.getElementById("pinGate").classList.remove("hidden");
         throw new Error("API Base URL required");
       }
@@ -404,8 +530,9 @@
 
     async function loadStatus() {
       const st = await api("/api/status");
+      const qMini = window.__lastQuota ? ` · AI: ${window.__lastQuota.status}` : "";
       document.getElementById("hdrMeta").textContent =
-        `TMUX: ${st.tmuxSessions.join(", ") || "none"} · PROCS: ${st.activeRenderProcs} · ${st.tunnelUrl || "LOCAL"}`;
+        `TMUX: ${st.tmuxSessions.join(", ") || "none"} · PROCS: ${st.activeRenderProcs}${qMini} · ${st.tunnelUrl || "LOCAL"}`;
       document.getElementById("monitorMeta").textContent = `${st.uptime}\n`;
       document.getElementById("prodLogTail").textContent = st.prodLogTail || "(Kosong)";
       const tp = document.getElementById("tmuxPanes");
@@ -530,11 +657,201 @@
       }
     }
 
+    let __quotaData = null;
+
+    function escHtml(s) {
+      return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    }
+
+    function renderQuotaUI(data) {
+      __quotaData = data;
+      window.__lastQuota = data;
+      const q = data.quota;
+      const sys = data.liveSystem;
+      const warnPct = q.warningThresholdPct || 80;
+
+      const badge = document.getElementById("quotaStatusBadge");
+      badge.textContent = data.status.replace("_", " ");
+      badge.className = `badge-status badge-${data.status}`;
+
+      const pauseBtn = document.getElementById("pauseBtn");
+      pauseBtn.textContent = q.paused ? "Resume AI & Render" : "Pause Semua Render";
+      pauseBtn.className = q.paused ? "btn primary" : "btn warn";
+
+      document.getElementById("quotaSubtitle").textContent =
+        `Hari: ${q.usage.currentDay} (WIB) · Bulan: ${q.usage.currentMonth} · RAM VPS: ${sys.ramUsedMb}/${sys.ramTotalMb} MB (${sys.ramPct}%) · Disk: ${sys.diskSummary} · Render Aktif: ${sys.activeRenders}/${q.limits.maxConcurrentRenders}`;
+
+      const alertHtml = [
+        ...data.blockedReasons.map((r) => `<div style="color:#fca5a5">[BLOCK] ${escHtml(r)}</div>`),
+        ...data.warnings.map((w) => `<div style="color:#fde68a">[WARN] ${escHtml(w)}</div>`),
+      ].join("") || `<div style="color:#86efac">Semua kuota AI, TTS, dan resource VPS dalam batas aman.</div>`;
+      document.getElementById("quotaAlerts").innerHTML = alertHtml;
+
+      document.getElementById("quotaMeters").innerHTML = Object.values(data.meters).map((m) => {
+        const w = Math.min(100, Math.max(0, m.pct));
+        const cls = m.pct >= 100 ? "crit" : m.pct >= warnPct ? "warn" : "";
+        return `
+          <div class="meter-row">
+            <div class="meter-head">
+              <span>${escHtml(m.label)}</span>
+              <span>${m.used.toLocaleString()} / ${m.limit.toLocaleString()} ${escHtml(m.unit)} (${m.pct}%)</span>
+            </div>
+            <div class="meter-track"><div class="meter-fill ${cls}" style="width:${w}%"></div></div>
+          </div>
+        `;
+      }).join("");
+
+      const sel = document.getElementById("qDefaultModel");
+      sel.innerHTML = (data.models || [])
+        .map((m) => `<option value="${escHtml(m.id)}">${escHtml(m.label)} (${escHtml(m.id)})</option>`)
+        .join("");
+      sel.value = q.defaultModel;
+
+      document.getElementById("qAiTasksLimit").value = q.limits.aiTasksPerDay;
+      document.getElementById("qRenderJobsLimit").value = q.limits.renderJobsPerDay;
+      document.getElementById("qTokensLimit").value = q.limits.aiTokensPerMonth;
+      document.getElementById("qTtsLimit").value = q.limits.ttsCharsPerMonth;
+      document.getElementById("qBudgetLimit").value = q.limits.monthlyBudgetUsd;
+      document.getElementById("qWarnPct").value = q.warningThresholdPct;
+      document.getElementById("qMaxConc").value = q.limits.maxConcurrentRenders;
+      document.getElementById("qMaxRam").value = q.limits.maxRamPct;
+      document.getElementById("qAutoBlock").value = String(q.autoBlockRenderOnLimit);
+
+      document.getElementById("providerCards").innerHTML = (q.providers || []).map((p, idx) => `
+        <div style="border:1px solid var(--border); border-radius:4px; padding:10px; margin-bottom:8px; background:#0d1410">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+            <strong style="color:var(--gold); font-size:13px">${escHtml(p.name)}</strong>
+            <span class="pill">${escHtml(p.plan)} · ${escHtml(p.resetInfo)}</span>
+          </div>
+          <div class="two-col" style="margin-top:6px">
+            <div>
+              <label style="margin-top:4px">Sisa Kuota (%)</label>
+              <input id="provPct_${idx}" type="number" min="0" max="100" value="${Number(p.remainingPct ?? 100)}" />
+            </div>
+            <div>
+              <label style="margin-top:4px">Catatan / Info Akun</label>
+              <input id="provNote_${idx}" type="text" value="${escHtml(p.note || "")}" />
+            </div>
+          </div>
+        </div>
+      `).join("");
+
+      document.getElementById("quotaHistory").textContent = (q.history || []).length
+        ? q.history.map((h) => `[${h.at}] (${h.type}) ${h.delta} · ${h.model || "-"} — ${h.note || ""}`).join("\n")
+        : "Belum ada catatan pemakaian.";
+    }
+
+    async function loadQuota(refresh = false) {
+      try {
+        const data = await api(`/api/ai-quota${refresh ? "?refresh=1" : ""}`);
+        renderQuotaUI(data);
+      } catch (e) {
+        const el = document.getElementById("quotaAlerts");
+        if (el) el.innerHTML = `<div style="color:#fca5a5">${escHtml(e.message)}</div>`;
+      }
+    }
+
+    async function toggleQuotaPause() {
+      if (!__quotaData) await loadQuota();
+      const next = !(__quotaData?.quota?.paused);
+      const res = await api("/api/ai-quota", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paused: next }),
+      });
+      renderQuotaUI(res);
+    }
+
+    async function saveQuotaConfig() {
+      const st = document.getElementById("quotaSaveStatus");
+      st.className = "status-msg";
+      st.textContent = "Menyimpan konfigurasi kuota...";
+      try {
+        const res = await api("/api/ai-quota", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            defaultModel: document.getElementById("qDefaultModel").value,
+            warningThresholdPct: Number(document.getElementById("qWarnPct").value),
+            autoBlockRenderOnLimit: document.getElementById("qAutoBlock").value === "true",
+            limits: {
+              aiTasksPerDay: Number(document.getElementById("qAiTasksLimit").value),
+              renderJobsPerDay: Number(document.getElementById("qRenderJobsLimit").value),
+              aiTokensPerMonth: Number(document.getElementById("qTokensLimit").value),
+              ttsCharsPerMonth: Number(document.getElementById("qTtsLimit").value),
+              monthlyBudgetUsd: Number(document.getElementById("qBudgetLimit").value),
+              maxConcurrentRenders: Number(document.getElementById("qMaxConc").value),
+              maxRamPct: Number(document.getElementById("qMaxRam").value),
+            },
+          }),
+        });
+        renderQuotaUI(res);
+        st.textContent = "Konfigurasi kuota & limit tersimpan di VPS.";
+      } catch (e) {
+        st.className = "status-msg err-msg";
+        st.textContent = e.message;
+      }
+    }
+
+    async function resetQuotaCounter(action) {
+      const res = await api("/api/ai-quota/record", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      renderQuotaUI(res);
+      document.getElementById("quotaSaveStatus").textContent =
+        action === "reset_daily" ? "Counter harian direset." : "Counter bulanan direset.";
+    }
+
+    async function recordQuotaUsage() {
+      const st = document.getElementById("recStatus");
+      st.className = "status-msg";
+      try {
+        const res = await api("/api/ai-quota/record", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "record",
+            tasks: Number(document.getElementById("recTasks").value || 0),
+            tokens: Number(document.getElementById("recTokens").value || 0),
+            ttsChars: Number(document.getElementById("recTts").value || 0),
+            usd: Number(document.getElementById("recUsd").value || 0),
+            note: document.getElementById("recNote").value,
+          }),
+        });
+        renderQuotaUI(res);
+        st.textContent = "Pemakaian berhasil dicatat.";
+      } catch (e) {
+        st.className = "status-msg err-msg";
+        st.textContent = e.message;
+      }
+    }
+
+    async function saveProviders() {
+      if (!__quotaData?.quota?.providers) return;
+      const updated = __quotaData.quota.providers.map((p, idx) => ({
+        ...p,
+        remainingPct: Number(document.getElementById(`provPct_${idx}`)?.value ?? p.remainingPct),
+        note: document.getElementById(`provNote_${idx}`)?.value ?? p.note,
+      }));
+      const res = await api("/api/ai-quota", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providers: updated }),
+      });
+      renderQuotaUI(res);
+      document.getElementById("recStatus").textContent = "Sisa kuota provider disimpan.";
+    }
+
     async function initAll() {
       try {
         await api("/api/auth-check");
-        await Promise.all([loadEpisodes(), loadStatus(), loadProjects()]);
-        setInterval(() => loadStatus().catch(() => {}), 6000);
+        await Promise.all([loadEpisodes(), loadQuota(), loadStatus(), loadProjects()]);
+        setInterval(() => {
+          loadStatus().catch(() => {});
+          loadQuota().catch(() => {});
+        }, 10000);
       } catch {}
     }
 

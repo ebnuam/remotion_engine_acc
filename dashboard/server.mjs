@@ -19,6 +19,8 @@ const OUT_DIR = path.join(ROOT, "out");
 const DOCS_DIR = path.join(ROOT, "docs", "episodes");
 const PROJECTS_DIR = path.join(ROOT, "public", "projects");
 const LOGS_DIR = path.join(ROOT, "logs");
+const DATA_DIR = path.join(ROOT, "dashboard", "data");
+const QUOTA_FILE = path.join(DATA_DIR, "ai_quota.json");
 
 const PORT = Number(process.env.STUDIO_PORT || 3010);
 const HOST = process.env.STUDIO_HOST || "127.0.0.1";
@@ -26,6 +28,7 @@ const STUDIO_PIN = (process.env.STUDIO_PIN || "kokisoyo2026").trim();
 
 fs.mkdirSync(PROJECTS_DIR, { recursive: true });
 fs.mkdirSync(LOGS_DIR, { recursive: true });
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -401,6 +404,278 @@ async function handleListProjects() {
   return { projects: list.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "")) };
 }
 
+function getJakartaDateParts(date = new Date()) {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+  return { day: fmt, month: fmt.slice(0, 7) };
+}
+
+let cachedModels = { fetchedAt: 0, list: [] };
+
+async function getAvailableAiModels(force = false) {
+  const now = Date.now();
+  if (!force && cachedModels.list.length > 0 && now - cachedModels.fetchedAt < 10 * 60 * 1000) {
+    return cachedModels.list;
+  }
+  const res = await runSafe("agy", ["models"], 8000);
+  if (res.ok && res.stdout) {
+    const parsed = res.stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("Fetching "))
+      .map((line) => {
+        const [id, ...rest] = line.split(/\s+/);
+        return { id, label: rest.join(" ") || id };
+      })
+      .filter((m) => m.id);
+    if (parsed.length > 0) {
+      cachedModels = { fetchedAt: now, list: parsed };
+      return parsed;
+    }
+  }
+  return cachedModels.list.length > 0
+    ? cachedModels.list
+    : [
+        { id: "gemini-4-hydrogen-high", label: "Gemini 4 Hydrogen (High)" },
+        { id: "gemini-3.8-flash-high", label: "Gemini 3.8 Flash (High)" },
+        { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6 (Thinking)" },
+        { id: "claude-opus-4-6-thinking", label: "Claude Opus 4.6 (Thinking)" },
+      ];
+}
+
+function defaultQuotaState() {
+  const { day, month } = getJakartaDateParts();
+  return {
+    paused: false,
+    defaultModel: "gemini-4-hydrogen-high",
+    warningThresholdPct: 80,
+    autoBlockRenderOnLimit: true,
+    limits: {
+      aiTasksPerDay: 25,
+      aiTokensPerMonth: 2000000,
+      ttsCharsPerMonth: 120000,
+      renderJobsPerDay: 12,
+      maxConcurrentRenders: 1,
+      maxRamPct: 85,
+      monthlyBudgetUsd: 25,
+    },
+    usage: {
+      currentDay: day,
+      currentMonth: month,
+      aiTasksToday: 0,
+      aiTokensMonth: 0,
+      ttsCharsMonth: 0,
+      renderJobsToday: 0,
+      estimatedSpendUsdMonth: 0,
+    },
+    providers: [
+      {
+        id: "antigravity",
+        name: "Antigravity CLI (Gemini / Claude)",
+        plan: "Workspace / Pro",
+        remainingPct: 100,
+        resetInfo: "Rolling / 5 jam & mingguan",
+        note: "Sinkronkan sisa kuota manual dari UI Antigravity jika perlu.",
+      },
+      {
+        id: "tts",
+        name: "Voice-Over / TTS Engine",
+        plan: "Edge-TTS / ElevenLabs",
+        remainingPct: 100,
+        resetInfo: "Bulanan",
+        note: "Terpantau otomatis saat upload / catat naskah audio.",
+      },
+      {
+        id: "vps_render",
+        name: "VPS Remotion Compute (4 vCPU)",
+        plan: "24/7 Local Chrome + swangle",
+        remainingPct: 100,
+        resetInfo: "Reset harian 00:00 WIB",
+        note: "Concurrency dijaga <= 1 agar tidak OOM / hang.",
+      },
+    ],
+    history: [],
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function loadQuotaState() {
+  let state = defaultQuotaState();
+  if (fs.existsSync(QUOTA_FILE)) {
+    try {
+      const saved = JSON.parse(fs.readFileSync(QUOTA_FILE, "utf8"));
+      state = {
+        ...state,
+        ...saved,
+        limits: { ...state.limits, ...(saved.limits || {}) },
+        usage: { ...state.usage, ...(saved.usage || {}) },
+        providers: Array.isArray(saved.providers) && saved.providers.length ? saved.providers : state.providers,
+        history: Array.isArray(saved.history) ? saved.history : [],
+      };
+    } catch {}
+  }
+  const { day, month } = getJakartaDateParts();
+  let changed = !fs.existsSync(QUOTA_FILE);
+  if (state.usage.currentDay !== day) {
+    state.usage.currentDay = day;
+    state.usage.aiTasksToday = 0;
+    state.usage.renderJobsToday = 0;
+    changed = true;
+  }
+  if (state.usage.currentMonth !== month) {
+    state.usage.currentMonth = month;
+    state.usage.aiTokensMonth = 0;
+    state.usage.ttsCharsMonth = 0;
+    state.usage.estimatedSpendUsdMonth = 0;
+    changed = true;
+  }
+  if (changed) saveQuotaState(state);
+  return state;
+}
+
+function saveQuotaState(state) {
+  state.updatedAt = new Date().toISOString();
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(QUOTA_FILE, JSON.stringify(state, null, 2), "utf8");
+  return state;
+}
+
+function appendQuotaHistory(state, entry) {
+  state.history = [
+    { at: new Date().toISOString(), ...entry },
+    ...(state.history || []),
+  ].slice(0, 40);
+}
+
+async function getLiveSystemStats() {
+  const [memRes, diskRes, psRes] = await Promise.all([
+    runSafe("free", ["-m"]),
+    runSafe("df", ["-BG", ROOT]),
+    runSafe("bash", [
+      "-lc",
+      "ps -ef | grep -E 'node .*\\.bin/remotion render|node .*bridge-stills\\.mjs' | grep -v grep | wc -l",
+    ]),
+  ]);
+
+  let ramTotalMb = 0;
+  let ramUsedMb = 0;
+  let ramPct = 0;
+  const memLine = (memRes.stdout || "").split("\n").find((l) => l.startsWith("Mem:"));
+  if (memLine) {
+    const parts = memLine.trim().split(/\s+/);
+    ramTotalMb = Number(parts[1]) || 0;
+    ramUsedMb = Number(parts[2]) || 0;
+    ramPct = ramTotalMb > 0 ? Math.round((ramUsedMb / ramTotalMb) * 1000) / 10 : 0;
+  }
+
+  let diskSummary = "-";
+  let diskPct = 0;
+  const diskLines = (diskRes.stdout || "").trim().split("\n");
+  if (diskLines.length >= 2) {
+    const dp = diskLines[1].trim().split(/\s+/);
+    diskSummary = `${dp[2] || "?"} / ${dp[1] || "?"} (${dp[4] || "?"})`;
+    diskPct = Number(String(dp[4] || "0").replace("%", "")) || 0;
+  }
+
+  const activeRenders = Number((psRes.stdout || "0").trim()) || 0;
+  return { ramTotalMb, ramUsedMb, ramPct, diskSummary, diskPct, activeRenders };
+}
+
+function evaluateQuotaStatus(quota, liveSystem) {
+  const pct = (used, limit) => (limit > 0 ? Math.round((used / limit) * 1000) / 10 : 0);
+  const meters = {
+    aiTasks: {
+      label: "Task AI Harian",
+      used: quota.usage.aiTasksToday,
+      limit: quota.limits.aiTasksPerDay,
+      pct: pct(quota.usage.aiTasksToday, quota.limits.aiTasksPerDay),
+      unit: "task",
+    },
+    aiTokens: {
+      label: "Token AI Bulanan",
+      used: quota.usage.aiTokensMonth,
+      limit: quota.limits.aiTokensPerMonth,
+      pct: pct(quota.usage.aiTokensMonth, quota.limits.aiTokensPerMonth),
+      unit: "token",
+    },
+    ttsChars: {
+      label: "Karakter TTS Bulanan",
+      used: quota.usage.ttsCharsMonth,
+      limit: quota.limits.ttsCharsPerMonth,
+      pct: pct(quota.usage.ttsCharsMonth, quota.limits.ttsCharsPerMonth),
+      unit: "karakter",
+    },
+    renderJobs: {
+      label: "Render Job Harian",
+      used: quota.usage.renderJobsToday,
+      limit: quota.limits.renderJobsPerDay,
+      pct: pct(quota.usage.renderJobsToday, quota.limits.renderJobsPerDay),
+      unit: "job",
+    },
+    budgetUsd: {
+      label: "Estimasi Budget Bulanan",
+      used: Number(quota.usage.estimatedSpendUsdMonth.toFixed(2)),
+      limit: quota.limits.monthlyBudgetUsd,
+      pct: pct(quota.usage.estimatedSpendUsdMonth, quota.limits.monthlyBudgetUsd),
+      unit: "USD",
+    },
+    ram: {
+      label: "RAM VPS Terpakai",
+      used: liveSystem.ramPct,
+      limit: quota.limits.maxRamPct,
+      pct: liveSystem.ramPct,
+      unit: "%",
+    },
+  };
+
+  const blockedReasons = [];
+  const warnings = [];
+  let renderBusy = false;
+
+  if (quota.paused) {
+    blockedReasons.push("Studio sedang dalam mode PAUSE darurat.");
+  }
+  if (liveSystem.activeRenders >= quota.limits.maxConcurrentRenders) {
+    renderBusy = true;
+    warnings.push(
+      `Render job sedang aktif (${liveSystem.activeRenders}/${quota.limits.maxConcurrentRenders}). Job render baru antre hingga selesai.`
+    );
+  }
+  if (liveSystem.ramPct >= quota.limits.maxRamPct) {
+    blockedReasons.push(`RAM VPS tinggi (${liveSystem.ramPct}% >= batas ${quota.limits.maxRamPct}%).`);
+  }
+
+  for (const key of ["aiTasks", "aiTokens", "ttsChars", "renderJobs", "budgetUsd"]) {
+    const m = meters[key];
+    if (m.limit > 0 && m.used >= m.limit) {
+      blockedReasons.push(`${m.label} mencapai batas (${m.used}/${m.limit} ${m.unit}).`);
+    } else if (m.limit > 0 && m.pct >= quota.warningThresholdPct) {
+      warnings.push(`${m.label} mendekati batas (${m.pct}%).`);
+    }
+  }
+
+  let status = "AMAN";
+  if (quota.paused) status = "DIPAUZE";
+  else if (blockedReasons.length > 0) status = "LIMIT_TERCAPAI";
+  else if (warnings.length > 0) status = "MENDEKATI_LIMIT";
+
+  return { status, renderBusy, meters, warnings, blockedReasons };
+}
+
+async function handleGetQuota(forceModels = false) {
+  const quota = loadQuotaState();
+  const [liveSystem, models] = await Promise.all([
+    getLiveSystemStats(),
+    getAvailableAiModels(forceModels),
+  ]);
+  const evaluation = evaluateQuotaStatus(quota, liveSystem);
+  return { quota, liveSystem, models, ...evaluation };
+}
+
 async function launchStudioJob(payload) {
   const { mode, compId, frames, notes, targetEpisode } = payload || {};
   const ts = new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
@@ -418,13 +693,30 @@ async function launchStudioJob(payload) {
     throw new Error(`Unknown composition ID: ${compId}`);
   }
 
-  // Safety guard: never start concurrent heavy Chromium render while another render is running
-  const psCheck = await runSafe("bash", [
-    "-lc",
-    "ps -ef | grep -E 'remotion render|bridge-stills' | grep -v grep || true",
-  ]);
-  if ((psCheck.stdout || "").trim().length > 0) {
-    throw new Error("Render lain sedang berjalan di VPS. Tunggu selesai agar 4 vCPU tidak bentrok.");
+  // Safety guard: enforce AI & VPS quota/concurrency guardrails before launching heavy Chromium render
+  const quotaCheck = await handleGetQuota(false);
+  if (quotaCheck.quota.paused) {
+    throw new Error("Eksekusi diblokir: Mode Pause Darurat AI & Render sedang aktif.");
+  }
+  if (quotaCheck.liveSystem.activeRenders >= quotaCheck.quota.limits.maxConcurrentRenders) {
+    throw new Error(
+      `Render lain sedang berjalan (${quotaCheck.liveSystem.activeRenders}/${quotaCheck.quota.limits.maxConcurrentRenders}). Tunggu selesai agar 4 vCPU tidak bentrok.`
+    );
+  }
+  if (quotaCheck.liveSystem.ramPct >= quotaCheck.quota.limits.maxRamPct) {
+    throw new Error(
+      `RAM VPS (${quotaCheck.liveSystem.ramPct}%) melewati batas guardrail (${quotaCheck.quota.limits.maxRamPct}%).`
+    );
+  }
+  if (
+    quotaCheck.quota.autoBlockRenderOnLimit &&
+    (quotaCheck.meters.renderJobs.used >= quotaCheck.meters.renderJobs.limit ||
+      quotaCheck.meters.aiTasks.used >= quotaCheck.meters.aiTasks.limit ||
+      quotaCheck.meters.aiTokens.used >= quotaCheck.meters.aiTokens.limit)
+  ) {
+    throw new Error(
+      `Auto-block aktif karena kuota tercapai: ${quotaCheck.blockedReasons.join(" | ")}`
+    );
   }
 
   const sessionName = `studio_job_${ts}`;
@@ -477,6 +769,17 @@ exec bash
 `;
   fs.writeFileSync(scriptFile, scriptBody, { mode: 0o755 });
   await execFileAsync("tmux", ["new-session", "-d", "-s", sessionName, `bash "${scriptFile}"`]);
+
+  const qState = loadQuotaState();
+  qState.usage.renderJobsToday += 1;
+  appendQuotaHistory(qState, {
+    type: `job:${mode}`,
+    delta: "+1 render job",
+    model: qState.defaultModel,
+    note: `${compId}${frames ? ` (${frames})` : ""}`,
+  });
+  saveQuotaState(qState);
+
   return { ok: true, sessionName, logFile: `logs/${sessionName}.log` };
 }
 
@@ -518,6 +821,126 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (pathname === "/api/ai-quota" && req.method === "GET") {
+      const refreshModels = urlObj.searchParams.get("refresh") === "1";
+      sendJson(res, 200, await handleGetQuota(refreshModels));
+      return;
+    }
+
+    if (pathname === "/api/ai-quota" && req.method === "POST") {
+      const raw = await readBodyBuffer(req, 512 * 1024);
+      const body = JSON.parse(raw.toString("utf8"));
+      const state = loadQuotaState();
+      if (typeof body.paused === "boolean") state.paused = body.paused;
+      if (typeof body.autoBlockRenderOnLimit === "boolean") {
+        state.autoBlockRenderOnLimit = body.autoBlockRenderOnLimit;
+      }
+      if (typeof body.defaultModel === "string" && body.defaultModel.trim()) {
+        state.defaultModel = body.defaultModel.trim().slice(0, 80);
+      }
+      if (body.warningThresholdPct !== undefined) {
+        const w = Number(body.warningThresholdPct);
+        if (Number.isFinite(w) && w >= 10 && w <= 99) state.warningThresholdPct = Math.round(w);
+      }
+      if (body.limits && typeof body.limits === "object") {
+        const numBounds = {
+          aiTasksPerDay: [1, 10000],
+          aiTokensPerMonth: [1000, 1000000000],
+          ttsCharsPerMonth: [100, 100000000],
+          renderJobsPerDay: [1, 1000],
+          maxConcurrentRenders: [1, 4],
+          maxRamPct: [30, 98],
+          monthlyBudgetUsd: [0, 100000],
+        };
+        for (const [k, [minV, maxV]] of Object.entries(numBounds)) {
+          if (body.limits[k] !== undefined) {
+            const val = Number(body.limits[k]);
+            if (Number.isFinite(val)) {
+              state.limits[k] = Math.min(maxV, Math.max(minV, val));
+            }
+          }
+        }
+      }
+      if (Array.isArray(body.providers)) {
+        state.providers = body.providers.slice(0, 8).map((p, idx) => ({
+          id: sanitizeSlug(p.id || `prov_${idx}`) || `prov_${idx}`,
+          name: String(p.name || "Provider AI").slice(0, 64),
+          plan: String(p.plan || "-").slice(0, 48),
+          remainingPct: Math.min(100, Math.max(0, Number(p.remainingPct ?? 100) || 0)),
+          resetInfo: String(p.resetInfo || "-").slice(0, 48),
+          note: String(p.note || "").slice(0, 160),
+        }));
+      }
+      appendQuotaHistory(state, {
+        type: "config_update",
+        delta: state.paused ? "PAUSED" : "UPDATED",
+        model: state.defaultModel,
+        note: `Limits / provider settings updated`,
+      });
+      saveQuotaState(state);
+      sendJson(res, 200, await handleGetQuota(false));
+      return;
+    }
+
+    if (pathname === "/api/ai-quota/record" && req.method === "POST") {
+      const raw = await readBodyBuffer(req, 512 * 1024);
+      const body = JSON.parse(raw.toString("utf8"));
+      const state = loadQuotaState();
+      const action = body.action || "record";
+
+      if (action === "reset_daily") {
+        state.usage.aiTasksToday = 0;
+        state.usage.renderJobsToday = 0;
+        appendQuotaHistory(state, { type: "reset_daily", delta: "0", model: state.defaultModel, note: "Reset counter harian" });
+      } else if (action === "reset_monthly") {
+        state.usage.aiTokensMonth = 0;
+        state.usage.ttsCharsMonth = 0;
+        state.usage.estimatedSpendUsdMonth = 0;
+        appendQuotaHistory(state, { type: "reset_monthly", delta: "0", model: state.defaultModel, note: "Reset counter bulanan" });
+      } else if (action === "set_usage") {
+        if (body.aiTasksToday !== undefined) state.usage.aiTasksToday = Math.max(0, Number(body.aiTasksToday) || 0);
+        if (body.aiTokensMonth !== undefined) state.usage.aiTokensMonth = Math.max(0, Number(body.aiTokensMonth) || 0);
+        if (body.ttsCharsMonth !== undefined) state.usage.ttsCharsMonth = Math.max(0, Number(body.ttsCharsMonth) || 0);
+        if (body.renderJobsToday !== undefined) state.usage.renderJobsToday = Math.max(0, Number(body.renderJobsToday) || 0);
+        if (body.estimatedSpendUsdMonth !== undefined) {
+          state.usage.estimatedSpendUsdMonth = Math.max(0, Number(body.estimatedSpendUsdMonth) || 0);
+        }
+        appendQuotaHistory(state, {
+          type: "sync_usage",
+          delta: "manual",
+          model: state.defaultModel,
+          note: String(body.note || "Sinkronisasi angka pemakaian manual").slice(0, 120),
+        });
+      } else {
+        const dTasks = Math.max(0, Number(body.tasks || 0) || 0);
+        const dTokens = Math.max(0, Number(body.tokens || 0) || 0);
+        const dTts = Math.max(0, Number(body.ttsChars || 0) || 0);
+        const dRenders = Math.max(0, Number(body.renders || 0) || 0);
+        const dUsd = Math.max(0, Number(body.usd || 0) || 0);
+        state.usage.aiTasksToday += dTasks;
+        state.usage.aiTokensMonth += dTokens;
+        state.usage.ttsCharsMonth += dTts;
+        state.usage.renderJobsToday += dRenders;
+        state.usage.estimatedSpendUsdMonth = Number((state.usage.estimatedSpendUsdMonth + dUsd).toFixed(4));
+        const parts = [];
+        if (dTasks) parts.push(`+${dTasks} task`);
+        if (dTokens) parts.push(`+${dTokens} tok`);
+        if (dTts) parts.push(`+${dTts} tts`);
+        if (dRenders) parts.push(`+${dRenders} render`);
+        if (dUsd) parts.push(`+$${dUsd}`);
+        appendQuotaHistory(state, {
+          type: "usage",
+          delta: parts.join(", ") || "log",
+          model: String(body.model || state.defaultModel),
+          note: String(body.note || "Catat pemakaian AI manual").slice(0, 140),
+        });
+      }
+
+      saveQuotaState(state);
+      sendJson(res, 200, await handleGetQuota(action === "refresh_models"));
+      return;
+    }
+
     if (pathname === "/api/episodes" && req.method === "GET") {
       sendJson(res, 200, await handleEpisodes());
       return;
@@ -555,6 +978,19 @@ const server = http.createServer(async (req, res) => {
         `# ${brief.title}\n\n- **Slug:** \`${slug}\`\n- **Style:** ${brief.visualStyle}\n- **Format:** ${brief.aspect}\n- **Updated:** ${brief.updatedAt}\n\n## Prompt / Naskah\n\n${brief.prompt}\n\n## Catatan Produksi\n\n${brief.notes}\n`,
         "utf8"
       );
+      const qState = loadQuotaState();
+      const promptLen = (brief.prompt || "").length;
+      const estTokens = Math.max(250, Math.round(promptLen * 1.4));
+      qState.usage.aiTasksToday += 1;
+      qState.usage.aiTokensMonth += estTokens;
+      qState.usage.ttsCharsMonth += promptLen;
+      appendQuotaHistory(qState, {
+        type: "project_brief",
+        delta: `+1 task, +${estTokens} est tok`,
+        model: qState.defaultModel,
+        note: `Simpan brief: ${slug}`,
+      });
+      saveQuotaState(qState);
       sendJson(res, 200, { ok: true, brief });
       return;
     }
