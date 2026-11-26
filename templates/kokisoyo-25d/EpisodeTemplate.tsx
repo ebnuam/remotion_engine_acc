@@ -3,6 +3,7 @@
 // - Minimal SVG diegetic label slot (no auto-subtitles, no Unicode emojis)
 
 import React from "react";
+import { getInputProps, staticFile } from "remotion";
 import { RenderQualityMode, Stage25D } from "../../src/shared/kokisoyo25d";
 import { DOF, FLASH_AT, SHOTS, TOTAL, XFADE } from "./story";
 import { EpisodeWorld } from "./world";
@@ -43,9 +44,13 @@ const MinimalInfoSlot: React.FC<{ shotId: number }> = ({ shotId }) => {
   );
 };
 
-export const EpisodeTemplate: React.FC<{ renderMode?: RenderQualityMode }> = ({
-  renderMode = "look",
-}) => {
+export const EpisodeTemplate: React.FC<{
+  renderMode?: RenderQualityMode;
+  audioFile?: string;
+}> = ({ renderMode = "look", audioFile }) => {
+  const inputAudio = (getInputProps() as { audioFile?: string }).audioFile;
+  const resolvedAudio = audioFile || inputAudio || "";
+
   return (
     <Stage25D
       shots={SHOTS}
@@ -53,6 +58,7 @@ export const EpisodeTemplate: React.FC<{ renderMode?: RenderQualityMode }> = ({
       flashAt={FLASH_AT}
       dofTable={DOF}
       createWorld={() => new EpisodeWorld()}
+      audioSrc={resolvedAudio ? staticFile(resolvedAudio) : undefined}
       renderMode={renderMode}
       renderInfoOverlay={(_frame, shotId) => <MinimalInfoSlot shotId={shotId} />}
     />

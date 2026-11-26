@@ -55,11 +55,14 @@ export async function runRenderStage({
   compositionId = undefined,
   outMp4 = undefined,
   existingVideoPath = undefined,
+  inputProps = undefined,
   gl = "swangle",
-  concurrency = 2,
+  concurrency = 3,
   crf = 18,
   audioBitrate = "192k",
   timeoutMs = 180_000,
+  renderTimeoutMs = 2_400_000,
+  frames = undefined,
   runShortQa = false,
   dryRun = false,
   execFileImpl = execFileAsync,
@@ -109,12 +112,22 @@ export async function runRenderStage({
       : path.resolve(rootDir, outMp4)
     : path.join(jobDir, `${compositionId}.mp4`);
 
+  let propsPath = null;
+  if (inputProps && typeof inputProps === "object" && Object.keys(inputProps).length > 0) {
+    propsPath = path.join(jobDir, "render_props.json");
+    if (!dryRun) {
+      fs.writeFileSync(propsPath, JSON.stringify(inputProps, null, 2), "utf8");
+    }
+  }
+
   const remotionArgs = [
     "remotion",
     "render",
     entry,
     compositionId,
     targetMp4,
+    ...(propsPath ? [`--props=${propsPath}`] : []),
+    ...(frames ? [`--frames=${frames}`] : []),
     `--gl=${gl}`,
     `--concurrency=${concurrency}`,
     `--timeout=${timeoutMs}`,
@@ -133,6 +146,7 @@ export async function runRenderStage({
       dryRun: true,
       mode: "remotion_render",
       videoPath: targetMp4,
+      propsPath,
       commandPreview: `npx ${remotionArgs.join(" ")}`,
       probe: null,
     };
@@ -143,8 +157,8 @@ export async function runRenderStage({
 
   await execFileImpl("npx", remotionArgs, {
     cwd: rootDir,
-    timeout: Math.max(timeoutMs * 4, 600_000),
-    maxBuffer: 16 * 1024 * 1024,
+    timeout: Math.max(renderTimeoutMs, timeoutMs * 4),
+    maxBuffer: 64 * 1024 * 1024,
   });
 
   const renderDurationMs = Date.now() - startedAt;

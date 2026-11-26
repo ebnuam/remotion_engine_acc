@@ -8,7 +8,10 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { runPipeline } from "./orchestrator.mjs";
+import { ALL_STAGES, AUTO25D_COMPS, AUTO25D_ENTRY, runPipeline } from "./orchestrator.mjs";
+import { parseEbur128Summary, validateAudioMixMetrics } from "./audioStage.mjs";
+import { parseShortQaReport } from "./qcStage.mjs";
+import { allocateSceneFrames, compileScenePlan } from "./sceneStage.mjs";
 import {
   DEFAULT_VISUAL_STYLE,
   estimateNarrationDurationSec,
@@ -370,6 +373,225 @@ test("live post skips unconfigured platforms safely without crashing", async () 
     assert.equal(res.manifest.stages.post.results.youtube.status, "skipped_unconfigured");
     assert.equal(res.manifest.stages.post.results.facebook.status, "skipped_unconfigured");
     assert.equal(res.manifest.stages.post.results.instagram.status, "skipped_unconfigured");
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("parseEbur128Summary & validateAudioMixMetrics validate -14.5 LUFS and True Peak limits", () => {
+  const sampleStderr = `
+  Summary:
+    Integrated loudness:
+      I:         -14.5 LUFS
+      Threshold: -24.8 LUFS
+    Loudness range:
+      LRA:         4.2 LU
+    True peak:
+      Peak:       -1.3 dBFS
+  `;
+  const parsed = parseEbur128Summary(sampleStderr);
+  assert.equal(parsed.integratedLufs, -14.5);
+  assert.equal(parsed.loudnessRangeLu, 4.2);
+  assert.equal(parsed.truePeakDbtp, -1.3);
+
+  const okCheck = validateAudioMixMetrics({
+    durationSec: 57.2,
+    wavLoudness: parsed,
+    aacLoudness: { integratedLufs: -14.4, truePeakDbtp: -1.1 },
+  });
+  assert.equal(okCheck.passed, true);
+  assert.equal(okCheck.errors.length, 0);
+
+  const badCheck = validateAudioMixMetrics({
+    durationSec: 57.2,
+    wavLoudness: { integratedLufs: -19.5, truePeakDbtp: 0.2 },
+    aacLoudness: { integratedLufs: -19.5, truePeakDbtp: 0.4 },
+  });
+  assert.equal(badCheck.passed, false);
+  assert.ok(badCheck.errors.length >= 2);
+
+  const qaParsed = parseShortQaReport(
+    "SPECS 1080x1920 30/1 fps, 1740 frames, 58.000 s; audio: aac 48000 Hz 2ch\nLOUDNESS I: -14.5 LUFS | Peak: -1.2 dBFS\nBLACK 0 frames\nFROZEN 0 spans"
+  );
+  assert.equal(qaParsed.blackFramesCount, 0);
+  assert.equal(qaParsed.frozenSpansCount, 0);
+});
+
+test("full 6-stage pipeline (generate -> audio -> scene -> render --props -> qc -> post) auto-targets AutoEpisode25D, wires public audio, and blocks live post on draft audio", async () => {
+  assert.deepEqual(ALL_STAGES, ["generate", "audio", "scene", "render", "qc", "post"]);
+  const tmpDir = makeTempDir();
+  const mixScriptDir = path.join(tmpDir, "templates", "audio-py");
+  fs.mkdirSync(mixScriptDir, { recursive: true });
+  fs.writeFileSync(path.join(mixScriptDir, "mix_audio.py"), "# stub\n");
+
+  const validScript = makeValidEditorialScript();
+  const fakeRouter = {
+    async chatCompletion({ task }) {
+      if (task === "script_master") {
+        return {
+          model: "gemini-4-neon-high",
+          content: JSON.stringify(validScript),
+          route: { tier: "premium", provider: "antigravity_cli", model: "gemini-4-neon-high" },
+          usage: { totalTokens: 300 },
+        };
+      }
+      return {
+        model: "gemini-2.5-flash",
+        content: JSON.stringify({
+          youtube: { title: "Judul #Shorts", description: "Deskripsi YT", tags: ["sains"] },
+          facebook: { title: "Judul FB", description: "Deskripsi FB" },
+          instagram: { caption: "Caption IG #KokIsoYo", firstComment: "Komen?" },
+        }),
+        route: { tier: "standard", provider: "agybridge", model: "gemini-2.5-flash" },
+        usage: { totalTokens: 150 },
+      };
+    },
+  };
+
+  const fakeTtsRouter = {
+    getConfigSummary: () => ({ defaultMode: "draft" }),
+    async synthesize({ outputDir, fileStem }) {
+      fs.mkdirSync(outputDir, { recursive: true });
+      const audioPath = path.join(outputDir, `${fileStem}.mp3`);
+      const wordsPath = path.join(outputDir, `${fileStem}.words.json`);
+      const metadataPath = path.join(outputDir, `${fileStem}.tts_meta.json`);
+      fs.writeFileSync(audioPath, Buffer.from("FAKE_MP3"));
+      fs.writeFileSync(wordsPath, JSON.stringify([{ s: 0.1, e: 1.0, w: "Ban" }]));
+      fs.writeFileSync(metadataPath, "{}");
+      return {
+        ok: true,
+        provider: "edge_tts",
+        mode: "draft",
+        voice: "id-ID-ArdiNeural",
+        cached: false,
+        cacheKey: "a".repeat(64),
+        commercialPolicy: { allowed: false, providerEligible: false, accountPlanTier: "unofficial" },
+        usage: { rawCharCount: 500, normalizedCharCount: 500, billedCharCount: 500, estimatedCostUsd: 0 },
+        audioInfo: { actualDurationSec: 56.5, withinTargetWindow: true },
+        audioPath,
+        wordsPath,
+        metadataPath,
+      };
+    },
+  };
+
+  const fakeExec = async (cmd, args) => {
+    if (cmd.includes("python")) {
+      const outIdx = args.indexOf("--out-dir");
+      const outDir = args[outIdx + 1];
+      fs.writeFileSync(path.join(outDir, "mix.wav"), Buffer.from("FAKE_WAV"));
+      fs.writeFileSync(path.join(outDir, "mix.m4a"), Buffer.from("FAKE_M4A"));
+      fs.writeFileSync(path.join(outDir, "cues_report.md"), "# report\n");
+      return { stdout: "Wrote mix.wav", stderr: "" };
+    }
+    if (cmd === "ffmpeg") {
+      return {
+        stdout: "",
+        stderr: "Summary:\n  I: -14.5 LUFS\n  LRA: 3.5 LU\n  Peak: -1.3 dBFS\n",
+      };
+    }
+    if (cmd === "ffprobe") {
+      return {
+        stdout: JSON.stringify({
+          format: { duration: "56.5", size: "5000000", bit_rate: "1500000" },
+          streams: [
+            { codec_type: "video", codec_name: "h264", width: 1080, height: 1920 },
+            { codec_type: "audio", codec_name: "aac", sample_rate: "48000", channels: 2 },
+          ],
+        }),
+        stderr: "",
+      };
+    }
+    throw new Error(`Unexpected command: ${cmd}`);
+  };
+
+  const fakeProbe = async (filePath) => ({
+    filePath,
+    actualDurationSec: 56.5,
+    withinTargetWindow: true,
+    codec: "aac",
+    sampleRate: 48_000,
+    channels: 2,
+    sizeBytes: 8,
+  });
+
+  try {
+    // 1. Draft dry-run post succeeds cleanly, compiles scene_plan.json synced to 56.5s audio,
+    //    auto-selects src/auto25d/index.ts + AutoEpisode25D without manual entry/comp!
+    const resDry = await runPipeline({
+      rootDir: tmpDir,
+      slug: "ep_full_test",
+      topic: "Kenapa ban pesawat nggak meledak?",
+      stages: ALL_STAGES,
+      syncPublicAudio: true,
+      dryRunGenerate: false,
+      dryRunAudio: false,
+      dryRunScene: false,
+      dryRunRender: true,
+      dryRunPost: true,
+      router: fakeRouter,
+      ttsRouter: fakeTtsRouter,
+      pythonBin: "python3",
+      execFileImpl: fakeExec,
+      probeImpl: fakeProbe,
+      env: {},
+    });
+
+    assert.equal(resDry.ok, true);
+    assert.equal(resDry.manifest.stages.audio.status, "completed");
+    assert.equal(resDry.manifest.stages.audio.mix.publicAudioRelPath, "episodes/ep_full_test/mix.m4a");
+    assert.ok(fs.existsSync(path.join(tmpDir, "public", "episodes", "ep_full_test", "mix.m4a")));
+    assert.equal(resDry.manifest.stages.scene.status, "completed");
+    assert.equal(resDry.manifest.stages.scene.summary.totalFrames, Math.ceil(56.5 * 30));
+    assert.equal(resDry.manifest.stages.scene.summary.defaultEnvTheme, "runway");
+    assert.equal(resDry.manifest.stages.render.entry, AUTO25D_ENTRY);
+    assert.equal(resDry.manifest.stages.render.compositionId, AUTO25D_COMPS.final);
+    assert.match(resDry.manifest.stages.render.commandPreview, /--props=.*render_props\.json/);
+    assert.equal(resDry.manifest.stages.qc.passed, true);
+    assert.equal(resDry.manifest.stages.post.status, "completed");
+
+    // Verify scene compiler keeps Scene 1 <= 2.0s (60 frames) and sums exactly to totalFrames
+    const compiled = compileScenePlan({ script: validScript, slug: "ep_full_test", actualDurationSec: 58.512, fps: 30 });
+    assert.equal(compiled.totalFrames, Math.ceil(58.512 * 30));
+    assert.ok(compiled.scenes[0].b - compiled.scenes[0].a <= 60);
+    assert.equal(compiled.scenes[compiled.scenes.length - 1].b, compiled.totalFrames);
+    const spans = allocateSceneFrames(validScript.scenes, 1756, 30);
+    assert.equal(spans[spans.length - 1].b, 1756);
+
+    // 2. Live post with draft audio MUST BE BLOCKED even when "qc" stage is OMITTED (stale dry-run QC bypass attempt)
+    const resBypassAttempt = await runPipeline({
+      rootDir: tmpDir,
+      jobId: resDry.jobId,
+      slug: "ep_full_test",
+      stages: ["post"],
+      dryRunPost: false,
+      execFileImpl: fakeExec,
+      env: {},
+    });
+    assert.equal(resBypassAttempt.ok, false);
+    assert.equal(resBypassAttempt.manifest.stages.post.status, "blocked_by_qc");
+    assert.ok(
+      resBypassAttempt.manifest.stages.post.blockingErrors.some((e) =>
+        /lisensi komersial final/i.test(e)
+      )
+    );
+
+    // 3. Live post with qc + post also blocks draft audio cleanly
+    const resBlocked = await runPipeline({
+      rootDir: tmpDir,
+      jobId: resDry.jobId,
+      slug: "ep_full_test",
+      stages: ["qc", "post"],
+      dryRunPost: false,
+      execFileImpl: fakeExec,
+      env: {},
+    });
+    assert.equal(resBlocked.ok, false);
+    assert.equal(resBlocked.manifest.stages.qc.passed, false);
+    assert.equal(resBlocked.manifest.stages.post.status, "blocked_by_qc");
+    assert.ok(
+      resBlocked.manifest.stages.qc.blockingErrors.some((e) => /lisensi komersial final/i.test(e))
+    );
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
