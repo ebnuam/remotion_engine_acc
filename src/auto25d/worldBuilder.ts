@@ -114,8 +114,8 @@ export class AutoWorld25D implements StageWorldAdapter {
     this.plan = plan;
     const R = this.root;
     R.add(this.sky.mesh);
-    this.sunRig = createSunRig(R, 512);
-    this.clouds = createCloudRing(R, 6);
+    this.sunRig = createSunRig(R, 1024);
+    this.clouds = createCloudRing(R, 7);
     this.envRig = buildEnvironments(R);
     this.propRig = buildHeroPropRig(R);
 
@@ -135,23 +135,23 @@ export class AutoWorld25D implements StageWorldAdapter {
   }
 
   private applyNightStudioLook(camPos: THREE.Vector3, scene: THREE.Scene) {
-    // Deep cobalt blue studio palette (per VISUAL_STYLE_GUIDE.md §2.6: readable on dim mobile screens)
-    const nightStops = ["#12264d", "#163263", "#1b3e78", "#132952", "#0b1733"];
+    // Sleek dark slate-navy aerospace test lab atmosphere (high contrast, cinematic, never toy neon)
+    const nightStops = ["#0f172a", "#16243d", "#1c2e4a", "#111c30", "#090f1c"];
     nightStops.forEach((h, i) => untone(h, this.sky.mat.uniforms["c" + i].value));
     const e = [0, 5, 12, 24, 48].map((deg) => THREE.MathUtils.degToRad(deg));
     this.sky.mat.uniforms.e.value.set(e[1], e[2], e[3], e[4]);
     this.sky.mesh.position.copy(camPos);
 
-    untone("#13284f", this.fog.color);
-    this.fog.near = 28;
-    this.fog.far = 220;
+    untone("#101b2e", this.fog.color);
+    this.fog.near = 26;
+    this.fog.far = 210;
     scene.fog = this.fog;
 
-    this.sunRig.hemi.color.set("#7dd3fc");
-    this.sunRig.hemi.groundColor.set("#1e3a8a");
-    this.sunRig.hemi.intensity = 0.75;
+    this.sunRig.hemi.color.set("#93c5fd");
+    this.sunRig.hemi.groundColor.set("#1e293b");
+    this.sunRig.hemi.intensity = 0.85;
     this.sunRig.sun.color.set("#fff7ed");
-    this.sunRig.sun.intensity = 2.6;
+    this.sunRig.sun.intensity = 3.1;
   }
 
   update(
@@ -266,32 +266,37 @@ export class AutoWorld25D implements StageWorldAdapter {
         fx.r = this.pool.req(`qmark|${qT}`, 250, 250, 0.5, (p) => drawQuestionMarkFx(p, qT));
         fx.use("hard");
         fx.mesh.position.set(offsetX, offsetY, 0.5);
-        fx.mesh.scale.set(1.5, 1.5, 1);
+        fx.mesh.scale.set(1.25, 1.25, 1);
       } else if (fxKind === "cross_explosion") {
         fx.r = this.pool.req(`xexp|${qS}`, 250, 250, 0.5, (p) => drawCrossExplosionFx(p, qS));
         fx.use("hard");
         fx.mesh.position.set(1.35, 2.85, 0.6);
-        fx.mesh.scale.set(1.65, 1.65, 1);
+        fx.mesh.scale.set(1.35, 1.35, 1);
       } else if (fxKind === "pressure_arrows") {
+        // Skip redundant 2D arrows when the 3D manometer dial gauge is already center-stage
+        if (item.heroProp === "burst_test_4x") {
+          fxCount -= 1;
+          return;
+        }
         fx.r = this.pool.req(`parr|${qS}`, 250, 250, 0.5, (p) => drawPressureArrowsFx(p, qS));
         fx.use("hard");
-        fx.mesh.position.set(0, 1.9, 1.55);
-        fx.mesh.scale.set(2.9, 2.9, 1);
+        fx.mesh.position.set(0.35, 1.85, 1.55);
+        fx.mesh.scale.set(2.15, 2.15, 1);
       } else if (fxKind === "shield_aura") {
         fx.r = this.pool.req(`shld|${qS}`, 250, 250, 0.5, (p) => drawShieldAuraFx(p, qS));
         fx.use("soft");
         fx.mesh.position.set(0, 1.85, 1.5);
-        fx.mesh.scale.set(3.2, 3.2, 1);
+        fx.mesh.scale.set(2.75, 2.75, 1);
       } else if (fxKind === "smoke_puffs") {
         fx.r = this.pool.req(`smk|${qS}`, 250, 250, 0.5, (p) => drawSmokePuffFx(p, qS));
         fx.use("soft");
         fx.mesh.position.set(-1.3, 0.95, 0.7);
-        fx.mesh.scale.set(2.2, 1.6, 1);
+        fx.mesh.scale.set(1.9, 1.4, 1);
       } else {
         fx.r = this.pool.req(`spk|${qS}`, 250, 250, 0.5, (p) => drawComicSparklesFx(p, qS));
         fx.use("hard");
         fx.mesh.position.set(offsetX, offsetY, 0.4);
-        fx.mesh.scale.set(1.8, 1.8, 1);
+        fx.mesh.scale.set(1.35, 1.35, 1);
       }
 
       fx.mesh.visible = true;

@@ -61,7 +61,7 @@ export async function runRenderStage({
   crf = 18,
   audioBitrate = "192k",
   timeoutMs = 180_000,
-  renderTimeoutMs = 2_400_000,
+  renderTimeoutMs = 14_400_000,
   frames = undefined,
   runShortQa = false,
   dryRun = false,

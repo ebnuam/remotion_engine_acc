@@ -26,10 +26,10 @@ export interface HostDrawOptions {
  * Draws the Kok Iso Yo? cartoon host on a 600x1000 canvas (soles at y = 968).
  */
 export function drawKokoHost(p: Pen, o: HostDrawOptions) {
-  const coat = "#2563eb";
-  const vest = "#f59e0b";
+  const coat = "#1e3a5f";
+  const vest = "#d97706";
   const pants = "#1e293b";
-  const skin = "#f6c9a2";
+  const skin = "#f4c69c";
   const shoes = "#0f172a";
   const hair = "#1f2937";
 
@@ -97,15 +97,36 @@ export function drawKokoHost(p: Pen, o: HostDrawOptions) {
     p.ell(188, 654 - bob, 16, 16, skin, 8);
   }
 
-  // Torso (jacket + high-contrast vest stripe)
-  const torsoPts = superellipsePts(300, 562 - bob, 92, 138, 2.0, 2.35, 48);
+  // Torso (aviation engineer jacket + clean collar anchored like Episode 001 Daun Hijau)
+  const torsoPts = superellipsePts(300, 562 - bob, 88, 136, 2.0, 2.35, 48);
   p.gradFill(torsoPts, coat, coatShadow, o.lightAngle);
   p.inkRing(torsoPts, 13, Math.PI * 0.65, 0.4);
 
-  // Yellow-amber science badge / vest panel
-  const badgePts = roundedRectPts(268, 494 - bob, 332, 620 - bob, 16);
-  p.poly(badgePts, vest, 8);
-  p.ell(300, 554 - bob, 16, 16, "#fffdf7", 6);
+  // Neck + crisp collar
+  p.line(
+    [
+      [300, headCy + headR * 0.82],
+      [300, 442 - bob],
+    ],
+    skin,
+    20,
+    true
+  );
+  p.line(
+    [
+      [264, 456 - bob],
+      [300, 492 - bob],
+      [336, 456 - bob],
+    ],
+    "#fef3c7",
+    11,
+    true
+  );
+
+  // Subtle high-vis safety stripe panel
+  const badgePts = roundedRectPts(274, 514 - bob, 326, 618 - bob, 14);
+  p.poly(badgePts, vest, 7);
+  p.ell(300, 566 - bob, 12, 12, "#fffdf7", 5);
 
   // Front arm (pose-driven)
   if (o.pose === "point") {
