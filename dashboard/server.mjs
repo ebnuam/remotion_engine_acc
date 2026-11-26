@@ -10,6 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
+import { createAIGateway } from "../services/ai-gateway/index.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -421,6 +422,22 @@ async function getAvailableAiModels(force = false) {
   if (!force && cachedModels.list.length > 0 && now - cachedModels.fetchedAt < 10 * 60 * 1000) {
     return cachedModels.list;
   }
+
+  // Opt-in AGYBridge provider (preserves existing `agy models` default when AI_GATEWAY_PROVIDER !== "agybridge")
+  if (String(process.env.AI_GATEWAY_PROVIDER || "").trim().toLowerCase() === "agybridge") {
+    try {
+      const gateway = createAIGateway();
+      const { models } = await gateway.listModels({ forceRefresh: force });
+      if (models.length > 0) {
+        const mapped = models.map((m) => ({ id: m.id, label: m.id }));
+        cachedModels = { fetchedAt: now, list: mapped };
+        return mapped;
+      }
+    } catch (err) {
+      console.warn(`[KokIsoYo Dashboard] AGYBridge /v1/models fallback to existing provider: ${err.message}`);
+    }
+  }
+
   const res = await runSafe("agy", ["models"], 8000);
   if (res.ok && res.stdout) {
     const parsed = res.stdout
