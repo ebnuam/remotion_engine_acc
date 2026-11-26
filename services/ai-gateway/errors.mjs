@@ -69,13 +69,25 @@ export class AIGatewayInvalidResponseError extends AIGatewayError {
 }
 
 export class AIGatewayModelUnavailableError extends AIGatewayError {
-  constructor(model, availableCount = 0) {
-    super(`Model "${model}" is not listed in AGYBridge /v1/models (${availableCount} models available).`, {
+  constructor(model, availableCount = 0, source = "AGYBridge /v1/models") {
+    super(`Model "${model}" is not listed in ${source} (${availableCount} models available).`, {
       code: "AI_GATEWAY_MODEL_UNAVAILABLE",
       retryable: false,
-      meta: { model, availableCount },
+      meta: { model, availableCount, source },
     });
     this.name = "AIGatewayModelUnavailableError";
     this.model = model;
+  }
+}
+
+export class AIGatewayCliError extends AIGatewayError {
+  constructor(message, { exitCode = null, retryable = false, requestId = "", stderrPreview = "" } = {}) {
+    super(message, {
+      code: "AI_GATEWAY_CLI_ERROR",
+      retryable,
+      meta: { exitCode, requestId, stderrPreview },
+    });
+    this.name = "AIGatewayCliError";
+    this.exitCode = exitCode;
   }
 }

@@ -1,5 +1,10 @@
 /**
- * Configuration loader for Kok Iso Yo? AI Gateway (AGYBridge Render).
+ * Configuration loader for Kok Iso Yo? AI Gateway & 2-Route Router.
+ *
+ * Routes:
+ * - STANDARD: AGYBridge Render OpenAI-compatible HTTP gateway
+ * - PREMIUM:  Local `agy` CLI on VPS (e.g. Gemini 4 Neon / Claude Opus / Pro Max models)
+ *
  * Never logs or returns secrets inside error messages.
  */
 
@@ -12,6 +17,37 @@ const DEFAULT_TIMEOUT_MS = 90_000;
 const DEFAULT_MAX_RETRIES = 2;
 const DEFAULT_RETRY_BASE_MS = 1_500;
 const DEFAULT_MODELS_CACHE_TTL_MS = 300_000;
+
+const DEFAULT_CLI_TIMEOUT_MS = 180_000;
+const DEFAULT_CLI_MAX_RETRIES = 1;
+const DEFAULT_CLI_RETRY_BASE_MS = 2_000;
+
+export const AI_TIERS = Object.freeze({
+  STANDARD: "standard",
+  PREMIUM: "premium",
+});
+
+export const VALID_EFFORT_LEVELS = new Set(["low", "medium", "high", "xhigh", "max"]);
+
+export const DEFAULT_PREMIUM_TASKS = Object.freeze([
+  "script_master",
+  "creative_director",
+  "storyboard_3d",
+  "qa_editorial",
+  "hook_rewrite",
+  "scene_codegen",
+]);
+
+export const DEFAULT_STANDARD_TASKS = Object.freeze([
+  "metadata",
+  "captions",
+  "hashtags",
+  "translation",
+  "summary",
+  "post_copy",
+  "draft_outline",
+  "seo_pack",
+]);
 
 export function parseEnvContent(content) {
   const parsed = {};
@@ -72,19 +108,43 @@ function parseIntClamped(value, fallback, min, max) {
   return Math.min(max, Math.max(min, Math.trunc(n)));
 }
 
-export function resolveGatewayConfig({ env = process.env, envFile = undefined, overrides = {} } = {}) {
-  const filePath = envFile ?? env.AGYBRIDGE_ENV_FILE ?? "";
+function parseCsvList(value, fallback) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item || "").trim().toLowerCase())
+      .filter(Boolean);
+  }
+  if (value === undefined || value === null || String(value).trim() === "") {
+    return [...fallback];
+  }
+  return String(value)
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function makeGetter({ env = process.env, envFile = undefined, overrides = {} } = {}) {
+  const filePath = envFile ?? env.AI_GATEWAY_ENV_FILE ?? env.AGYBRIDGE_ENV_FILE ?? "";
   const fileVars = filePath ? loadEnvFile(filePath) : {};
 
   // Priority: overrides > process.env > envFile
-  const get = (key, overrideKey = null) => {
+  return (keys, overrideKey = null) => {
     if (overrideKey && overrides[overrideKey] !== undefined && overrides[overrideKey] !== null) {
       return overrides[overrideKey];
     }
-    if (env[key] !== undefined && env[key] !== "") return env[key];
-    if (fileVars[key] !== undefined && fileVars[key] !== "") return fileVars[key];
+    const keyList = Array.isArray(keys) ? keys : [keys];
+    for (const key of keyList) {
+      if (env[key] !== undefined && env[key] !== "") return env[key];
+    }
+    for (const key of keyList) {
+      if (fileVars[key] !== undefined && fileVars[key] !== "") return fileVars[key];
+    }
     return "";
   };
+}
+
+export function resolveGatewayConfig({ env = process.env, envFile = undefined, overrides = {} } = {}) {
+  const get = makeGetter({ env, envFile, overrides });
 
   const provider = String(get("AI_GATEWAY_PROVIDER", "provider") || "antigravity_cli")
     .trim()
@@ -92,7 +152,9 @@ export function resolveGatewayConfig({ env = process.env, envFile = undefined, o
 
   const rawUrl = String(get("AGYBRIDGE_RENDER_URL", "baseUrl") || "").trim().replace(/\/+$/, "");
   const apiKey = String(get("AGYBRIDGE_RENDER_API_KEY", "apiKey") || "").trim();
-  const defaultModel = String(get("AGYBRIDGE_DEFAULT_MODEL", "defaultModel") || "").trim();
+  const defaultModel = String(
+    get(["AI_STANDARD_MODEL", "AGYBRIDGE_DEFAULT_MODEL"], "defaultModel") || ""
+  ).trim();
 
   const allowHttp = parseBool(get("AGYBRIDGE_ALLOW_HTTP", "allowHttp"), false);
   const verifyModelAvailable = parseBool(
@@ -124,7 +186,7 @@ export function resolveGatewayConfig({ env = process.env, envFile = undefined, o
     0,
     3_600_000
   );
-  const logLevel = String(get("AGYBRIDGE_LOG_LEVEL", "logLevel") || "info")
+  const logLevel = String(get(["AI_ROUTER_LOG_LEVEL", "AGYBRIDGE_LOG_LEVEL"], "logLevel") || "info")
     .trim()
     .toLowerCase();
 
@@ -139,6 +201,126 @@ export function resolveGatewayConfig({ env = process.env, envFile = undefined, o
     maxRetries,
     retryBaseMs,
     modelsCacheTtlMs,
+    logLevel,
+  };
+}
+
+export function resolveAgyCliConfig({ env = process.env, envFile = undefined, overrides = {} } = {}) {
+  const get = makeGetter({ env, envFile, overrides });
+
+  const bin = String(get("AGY_CLI_BIN", "bin") || "agy").trim();
+  const defaultModel = String(
+    get(["AI_PREMIUM_MODEL", "AGY_CLI_DEFAULT_MODEL"], "defaultModel") || ""
+  ).trim();
+  const defaultEffort = String(
+    get(["AI_PREMIUM_EFFORT", "AGY_CLI_EFFORT"], "defaultEffort") || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  if (defaultEffort && !VALID_EFFORT_LEVELS.has(defaultEffort)) {
+    throw new AIGatewayConfigError(
+      `Invalid AI_PREMIUM_EFFORT "${defaultEffort}". Expected one of: ${[...VALID_EFFORT_LEVELS].join(", ")}.`
+    );
+  }
+
+  const timeoutMs = parseIntClamped(
+    get(["AI_PREMIUM_TIMEOUT_MS", "AGY_CLI_TIMEOUT_MS"], "timeoutMs"),
+    DEFAULT_CLI_TIMEOUT_MS,
+    5_000,
+    600_000
+  );
+  const maxRetries = parseIntClamped(
+    get(["AI_PREMIUM_MAX_RETRIES", "AGY_CLI_MAX_RETRIES"], "maxRetries"),
+    DEFAULT_CLI_MAX_RETRIES,
+    0,
+    3
+  );
+  const retryBaseMs = parseIntClamped(
+    get(["AI_PREMIUM_RETRY_BASE_MS", "AGY_CLI_RETRY_BASE_MS"], "retryBaseMs"),
+    DEFAULT_CLI_RETRY_BASE_MS,
+    50,
+    30_000
+  );
+  const modelsCacheTtlMs = parseIntClamped(
+    get("AGY_CLI_MODELS_CACHE_TTL_MS", "modelsCacheTtlMs"),
+    DEFAULT_MODELS_CACHE_TTL_MS,
+    0,
+    3_600_000
+  );
+  const verifyModelAvailable = parseBool(
+    get("AGY_CLI_VERIFY_MODEL_AVAILABLE", "verifyModelAvailable"),
+    true
+  );
+  const disableSlashCommands = parseBool(
+    get("AGY_CLI_DISABLE_SLASH_COMMANDS", "disableSlashCommands"),
+    true
+  );
+  const cwd = String(get("AGY_CLI_CWD", "cwd") || os.tmpdir()).trim();
+  const logLevel = String(get(["AI_ROUTER_LOG_LEVEL", "AGYBRIDGE_LOG_LEVEL"], "logLevel") || "info")
+    .trim()
+    .toLowerCase();
+
+  return {
+    bin,
+    defaultModel,
+    defaultEffort,
+    timeoutMs,
+    maxRetries,
+    retryBaseMs,
+    modelsCacheTtlMs,
+    verifyModelAvailable,
+    disableSlashCommands,
+    cwd,
+    logLevel,
+  };
+}
+
+export function resolveRouterConfig({ env = process.env, envFile = undefined, overrides = {} } = {}) {
+  const get = makeGetter({ env, envFile, overrides });
+
+  const defaultTier = String(get("AI_ROUTE_DEFAULT", "defaultTier") || AI_TIERS.STANDARD)
+    .trim()
+    .toLowerCase();
+
+  if (defaultTier !== AI_TIERS.STANDARD && defaultTier !== AI_TIERS.PREMIUM) {
+    throw new AIGatewayConfigError(
+      `Invalid AI_ROUTE_DEFAULT "${defaultTier}". Expected "${AI_TIERS.STANDARD}" or "${AI_TIERS.PREMIUM}".`
+    );
+  }
+
+  const standardModel = String(
+    get(["AI_STANDARD_MODEL", "AGYBRIDGE_DEFAULT_MODEL"], "standardModel") || ""
+  ).trim();
+  const premiumModel = String(
+    get(["AI_PREMIUM_MODEL", "AGY_CLI_DEFAULT_MODEL"], "premiumModel") || ""
+  ).trim();
+
+  const fallbackOnTransient = parseBool(
+    get("AI_ROUTER_FALLBACK_ON_TRANSIENT", "fallbackOnTransient"),
+    false
+  );
+
+  const premiumTasks = parseCsvList(
+    get("AI_ROUTE_PREMIUM_TASKS", "premiumTasks"),
+    DEFAULT_PREMIUM_TASKS
+  );
+  const standardTasks = parseCsvList(
+    get("AI_ROUTE_STANDARD_TASKS", "standardTasks"),
+    DEFAULT_STANDARD_TASKS
+  );
+
+  const logLevel = String(get(["AI_ROUTER_LOG_LEVEL", "AGYBRIDGE_LOG_LEVEL"], "logLevel") || "info")
+    .trim()
+    .toLowerCase();
+
+  return {
+    defaultTier,
+    standardModel,
+    premiumModel,
+    fallbackOnTransient,
+    premiumTasks,
+    standardTasks,
     logLevel,
   };
 }

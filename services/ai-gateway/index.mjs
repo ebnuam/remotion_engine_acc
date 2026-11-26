@@ -1,47 +1,45 @@
 /**
- * Unified AI Gateway facade for Kok Iso Yo?.
+ * Unified AI Gateway & 2-Route Router facade for Kok Iso Yo?.
  *
+ * 2-Route Architecture (`createAIRouter`):
+ * - STANDARD -> AGYBridge Render OpenAI-compatible HTTP API (`createAGYBridgeAdapter`)
+ * - PREMIUM  -> Local `agy` CLI on VPS (`createAntigravityCliAdapter`)
+ *
+ * Legacy / single-provider facade (`createAIGateway`):
  * - Default provider remains `antigravity_cli` for full backward compatibility.
- * - Set `AI_GATEWAY_PROVIDER=agybridge` (plus `AGYBRIDGE_RENDER_URL` and `AGYBRIDGE_RENDER_API_KEY`)
- *   to route model listing and chat completions through AGYBridge Render.
+ * - Set `AI_GATEWAY_PROVIDER=agybridge` for single-provider AGYBridge mode.
+ * - Set `AI_GATEWAY_PROVIDER=router` (or call `createAIRouter()` directly) for 2-route STANDARD/PREMIUM mode.
  */
 
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { createAGYBridgeAdapter } from "./agybridgeAdapter.mjs";
-import { loadEnvFile, resolveGatewayConfig } from "./config.mjs";
+import { createAntigravityCliAdapter } from "./agyCliAdapter.mjs";
+import { resolveGatewayConfig } from "./config.mjs";
 import { AIGatewayConfigError } from "./errors.mjs";
-
-const execFileAsync = promisify(execFile);
+import { createAIRouter } from "./router.mjs";
 
 export * from "./errors.mjs";
 export { createAGYBridgeAdapter } from "./agybridgeAdapter.mjs";
-export { loadEnvFile, resolveGatewayConfig, validateAGYBridgeConfig } from "./config.mjs";
+export {
+  createAntigravityCliAdapter,
+  formatMessagesForCli,
+  parseAgyJsonOutput,
+  parseAgyModelsOutput,
+  stripTerminalNoise,
+} from "./agyCliAdapter.mjs";
+export { createAIRouter } from "./router.mjs";
+export {
+  AI_TIERS,
+  DEFAULT_PREMIUM_TASKS,
+  DEFAULT_STANDARD_TASKS,
+  VALID_EFFORT_LEVELS,
+  loadEnvFile,
+  parseEnvContent,
+  resolveAgyCliConfig,
+  resolveGatewayConfig,
+  resolveRouterConfig,
+  validateAGYBridgeConfig,
+} from "./config.mjs";
 export { createSafeLogger, redactText } from "./logger.mjs";
-
-function createAntigravityCliAdapter() {
-  return {
-    provider: "antigravity_cli",
-    async listModels() {
-      const { stdout } = await execFileAsync("agy", ["models"], { timeout: 8_000 });
-      const models = String(stdout || "")
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => line && !line.startsWith("Fetching "))
-        .map((line) => {
-          const [id, ...rest] = line.split(/\s+/);
-          return { id, label: rest.join(" ") || id, ownedBy: "antigravity_cli" };
-        })
-        .filter((m) => m.id);
-      return { models, cached: false, status: 200, latencyMs: 0, attempts: 1 };
-    },
-    async chatCompletion() {
-      throw new AIGatewayConfigError(
-        'Direct HTTP chatCompletion is only supported when AI_GATEWAY_PROVIDER="agybridge".'
-      );
-    },
-  };
-}
 
 export function createAIGateway(options = {}) {
   const cfg = resolveGatewayConfig({
@@ -54,10 +52,13 @@ export function createAIGateway(options = {}) {
     return createAGYBridgeAdapter(options);
   }
   if (cfg.provider === "antigravity_cli") {
-    return createAntigravityCliAdapter();
+    return createAntigravityCliAdapter(options);
+  }
+  if (cfg.provider === "router") {
+    return createAIRouter(options);
   }
 
   throw new AIGatewayConfigError(
-    `Unsupported AI_GATEWAY_PROVIDER "${cfg.provider}". Expected "agybridge" or "antigravity_cli".`
+    `Unsupported AI_GATEWAY_PROVIDER "${cfg.provider}". Expected "agybridge", "antigravity_cli", or "router".`
   );
 }
