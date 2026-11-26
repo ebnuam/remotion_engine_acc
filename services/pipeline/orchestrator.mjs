@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createAIRouter, loadEnvFile } from "../ai-gateway/index.mjs";
-import { runGenerateStage } from "./generateStage.mjs";
+import { DEFAULT_VISUAL_STYLE, EDITORIAL_RULES, runGenerateStage } from "./generateStage.mjs";
 import { runRenderStage } from "./renderStage.mjs";
 import {
   SUPPORTED_PLATFORMS,
@@ -46,8 +46,8 @@ export async function runPipeline({
   jobDir = undefined,
   slug = "episode_auto",
   topic = "",
-  durationSec = 60,
-  style = "Jalur 3C (StageDoc3D PBR + Editorial 2D)",
+  durationSec = EDITORIAL_RULES.targetDurationSec,
+  style = DEFAULT_VISUAL_STYLE,
   stages = ALL_STAGES,
   entry = undefined,
   compositionId = undefined,
@@ -122,11 +122,20 @@ export async function runPipeline({
       standardModel,
     });
     manifest.stages.generate = {
-      status: "completed",
+      status: genResult.ok ? "completed" : "validation_failed",
       dryRun: stageDryRun,
       completedAt: new Date().toISOString(),
       routes: genResult.routes,
       usage: genResult.usage,
+      editorialQaAttempts: genResult.editorialQaAttempts ?? 0,
+      editorialValidation: genResult.editorialValidation
+        ? {
+            passed: genResult.editorialValidation.passed,
+            errors: genResult.editorialValidation.errors,
+            warnings: genResult.editorialValidation.warnings,
+            metrics: genResult.editorialValidation.metrics,
+          }
+        : null,
       files: genResult.files,
     };
     saveManifest(manifestPath, manifest);

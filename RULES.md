@@ -1,7 +1,26 @@
-# PANDUAN STANDAR PRODUKSI (PRODUCTION RULES V3 — 2.5D-in-3D)
+# PANDUAN STANDAR PRODUKSI (PRODUCTION RULES V4 — EDITORIAL & 2.5D-in-3D)
 ## Repository: Kok Iso Yo? Studio (`remotion_engine_acc`)
 
-Dokumen ini adalah aturan produksi resmi yang **WAJIB dibaca dan dipatuhi** sebelum memulai episode baru. Seluruh episode 2.5D-in-3D wajib mengikuti standar visual Skill `.agy/skills/cartoon-3d-short/SKILL.md` dan memakai starter baku **`templates/kokisoyo-25d/`** bersama engine **`src/shared/kokisoyo25d/`**.
+Dokumen ini adalah aturan produksi dan **standar editorial resmi** yang **WAJIB dibaca dan dipatuhi** sebelum memulai episode baru. Seluruh produksi Shorts *Kok Iso Yo?* mengacu pada:
+- **Visual Style Guide:** `docs/VISUAL_STYLE_GUIDE.md`
+- **Arsitektur Audio & TTS:** `docs/TTS_ARCHITECTURE.md`
+- **Visual Skill & Starter 2.5D-in-3D:** `.agy/skills/cartoon-3d-short/SKILL.md`, starter baku **`templates/kokisoyo-25d/`**, dan engine **`src/shared/kokisoyo25d/`**.
+
+---
+
+## A. STANDAR EDITORIAL UTAMA KOK ISO YO? (WAJIB UNTUK SEMUA SHORTS)
+
+1. **Format & Durasi Utama:** YouTube Shorts / Reels vertikal `9:16` berdurasi **50–65 detik** (`1.500–1.950 frame @ 30 FPS`; titik ideal **55–60 detik**).
+2. **Satu Video = Satu Cerita Utuh:** Setiap episode membahas **satu fenomena atau satu pertanyaan spesifik** dan menyelesaikannya sampai tuntas (wajib memiliki **pembukaan**, **pengembangan/mekanisme**, dan **penyelesaian/payoff** yang memuaskan). Hindari memotong satu topik menjadi seri bersambung yang menggantung.
+3. **Hook Kuat 0–2 Detik (Ketat $\le 2{,}0\text{s}$):** Kalimat dan visual pada 0–2 detik pertama harus langsung memancing rasa penasaran atau kontradiksi konkret — tanpa salam pembuka, pengantar klise, atau jeda koma di tengah hook (Scene 1 maksimal `2` detik dan estimasi durasi baca hook wajib $\le 2{,}0\text{s}$).
+4. **Topik Dekat Kehidupan & Kaya Potensi Visual:** Prioritaskan fenomena sehari-hari, fakta mengejutkan, atau mekanisme unik yang relevan lintas audiens dan kuat untuk divisualisasikan secara 3D/2.5D.
+5. **Anti-Judul Akademis:** Dilarang memakai gaya judul makalah/jurnal (*"Analisis..."*, *"Kajian..."*, *"Studi..."*, istilah akademis kaku). Gunakan judul obrolan yang memancing rasa ingin tahu, ringkas, dan jujur.
+6. **Riset & Verifikasi Fakta Wajib:** Setiap klaim sains, teknologi, atau sejarah wajib diverifikasi (`factCheckNotes`) sebelum naskah dikunci. Dilarang mengorbankan akurasi demi sensasi atau memakai analogi yang menimbulkan kesalahpahaman teknis.
+7. **Narasi Bahasa Indonesia Natural & Proporsional Durasi:** Tulis untuk **didengar**, bukan dibaca seperti artikel. Kalimat pendek, mengalir, konversasional, dengan estimasi durasi baca pra-TTS yang memperhitungkan suku kata, jeda tanda baca, akronim, dan pelafalan angka/satuan (bukan hanya hitung karakter/kata mentah) agar narasi pas di 50–65 detik tanpa dipaksa cepat. *Keterbatasan:* estimator berbasis teks adalah guardrail heuristik pra-TTS (tempo aktual bervariasi tergantung voice TTS, prosodi, dan pelafalan istilah asing), sehingga durasi final tetap wajib diverifikasi ulang dengan `ffprobe` setelah audio TTS terbentuk.
+8. **Identitas Visual Baku (`2.5D-in-3D Cartoon Explainer`):** Gunakan `Stage25D` (`src/shared/kokisoyo25d/`) dengan dunia 3D cel-shaded ber-outline hitam, karakter 2D-in-3D ekspresif, pencahayaan penanda babak (`day`, `golden`, dan `night` bila tersedia), serta variasi sudut kamera (*low-angle*, *wide*, *top-down*, *medium*, *close-up*).
+9. **Ritme Visual 2–4 Detik per Shot:** Setiap shot berganti secara bermakna setiap **2–4 detik** (~15–22 shot per episode) tanpa dua komposisi identik berurutan.
+10. **Anti-Subtitle Permanen:** Dilarang menampilkan subtitle permanen di sepanjang video. Teks di layar (`onScreenLabel`) hanya untuk informasi visual penting (label singkat, angka kunci, rumus pendek, rambu/meteran diegetik) maksimal 4–5 kata dan **nol emoji Unicode**.
+11. **Target Produksi Terkendali Kualitas:** Target awal hingga **3 video per hari** hanya dijalankan apabila seluruh tahap validasi editorial, audio, dan QC visual lolos standar.
 
 ---
 
