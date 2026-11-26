@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kok Iso Yo? · Studio Control</title>
+  <style>
+    :root {
+      --bg: #0f1713;
+      --surface: #16211b;
+      --surface2: #1c2a22;
+      --border: #2c4034;
+      --text: #f3f1ea;
+      --muted: #9eb2a6;
+      --accent: #4c8c5a;
+      --gold: #e8d5ae;
+      --amber: #d97706;
+      --red: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.5;
+    }
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-bar { width: 5px; height: 28px; background: var(--gold); }
+    .brand h1 { margin: 0; font-size: 18px; letter-spacing: 0.3px; }
+    .brand small { display: block; color: var(--gold); font-size: 11px; font-family: monospace; letter-spacing: 1px; }
+    nav { display: flex; gap: 8px; flex-wrap: wrap; }
+    nav button {
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    nav button.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: #6ab079;
+    }
+    main { max-width: 1220px; margin: 0 auto; padding: 20px; }
+    .tab { display: none; }
+    .tab.active { display: block; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+    }
+    .card h3 { margin: 0 0 8px; font-size: 16px; color: var(--gold); }
+    .meta { font-family: monospace; font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+    video.portrait {
+      width: 100%;
+      max-height: 460px;
+      background: #000;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .btn {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+    }
+    .btn.primary { background: var(--accent); border-color: #6ab079; color: #fff; }
+    .btn.warn { background: #7c2d12; border-color: var(--amber); color: #fed7aa; }
+    pre {
+      background: #0b110e;
+      border: 1px solid var(--border);
+      padding: 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #cfe3d5;
+      max-height: 360px;
+    }
+    label { display: block; font-size: 12px; font-family: monospace; color: var(--gold); margin: 12px 0 4px; }
+    input, select, textarea {
+      width: 100%;
+      background: #0d1410;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 9px 11px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    textarea { min-height: 120px; resize: vertical; }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 11px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--gold);
+    }
+    .sheet-img { width: 100%; border-radius: 4px; border: 1px solid var(--border); cursor: zoom-in; }
+    #pinGate {
+      position: fixed; inset: 0; background: rgba(10, 15, 12, 0.96);
+      display: flex; align-items: center; justify-content: center; z-index: 100;
+    }
+    #pinGate.hidden { display: none; }
+    .pin-box { width: 340px; background: var(--surface); border: 1px solid var(--border); padding: 24px; border-radius: 6px; }
+    .status-msg { margin-top: 10px; font-size: 13px; color: #86efac; font-family: monospace; }
+    .err-msg { color: #fca5a5; }
+  </style>
+</head>
+<body>
+  <div id="pinGate" class="hidden">
+    <div class="pin-box">
+      <h2 style="margin:0 0 8px; color:var(--gold)">Kok Iso Yo? Studio</h2>
+      <p style="margin:0 0 14px; font-size:13px; color:var(--muted)">Masukkan PIN Studio (dan URL API VPS jika dibuka dari Cloudflare Pages).</p>
+      <label style="margin-top:0">URL API VPS (kosongkan jika akses langsung)</label>
+      <input id="apiBaseInput" type="text" placeholder="https://api.domainkamu.com" style="margin-bottom:10px" />
+      <label>PIN Studio</label>
+      <input id="pinInput" type="password" placeholder="PIN Studio" />
+      <button class="btn primary" style="width:100%; margin-top:12px" onclick="submitPin()">Masuk Studio</button>
+      <div id="pinErr" class="status-msg err-msg"></div>
+    </div>
+  </div>
+
+  <header>
+    <div class="brand">
+      <div class="brand-bar"></div>
+      <div>
+        <h1>KOK ISO YO? · STUDIO CONTROL</h1>
+        <small id="hdrMeta">JALUR 3C DOCUMENTARY ENGINE · LOADING...</small>
+      </div>
+    </div>
+    <nav>
+      <button class="active" onclick="switchTab('videos', this)">Video &amp; Download</button>
+      <button onclick="switchTab('monitor', this)">Live tmux &amp; Log</button>
+      <button onclick="switchTab('qa', this)">QA Sheets &amp; Naskah</button>
+      <button onclick="switchTab('prompt', this)">Prompt &amp; Upload Audio</button>
+      <button onclick="switchTab('jobs', this)">Render &amp; Revisi</button>
+      <button onclick="openSettings()" title="Atur URL API VPS & PIN">⚙ API / PIN</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- TAB 1: VIDEOS -->
+    <section id="tab-videos" class="tab active">
+      <div id="videoGrid" class="grid">Memuat daftar video...</div>
+    </section>
+
+    <!-- TAB 2: MONITOR -->
+    <section id="tab-monitor" class="tab">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px">
+          <h3>Status Server &amp; Sesi tmux</h3>
+          <button class="btn" onclick="loadStatus()">Refresh Sekarang</button>
+        </div>
+        <div id="monitorMeta" class="meta"></div>
+        <div id="tmuxPanes"></div>
+        <h3 style="margin-top:18px">Tail Log Produksi (`logs/episode002_production.log`)</h3>
+        <pre id="prodLogTail">Memuat log...</pre>
+      </div>
+    </section>
+
+    <!-- TAB 3: QA SHEETS & DOCS -->
+    <section id="tab-qa" class="tab">
+      <div class="card" style="margin-bottom:16px">
+        <h3>Dokumen Storyboard, Transkrip &amp; Cek Fakta</h3>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px" id="docButtons"></div>
+        <pre id="docViewer">Pilih dokumen di atas untuk membaca isi markdown.</pre>
+      </div>
+      <div id="sheetGrid" class="grid"></div>
+    </section>
+
+    <!-- TAB 4: PROMPT & AUDIO UPLOAD -->
+    <section id="tab-prompt" class="tab">
+      <div class="grid">
+        <div class="card">
+          <h3>1. Buat / Simpan Brief &amp; Prompt Episode</h3>
+          <label>ID / Slug Project (contoh: episode006_orangutan)</label>
+          <input id="projSlug" placeholder="episode006_topik_baru" />
+          <label>Judul Episode</label>
+          <input id="projTitle" placeholder="Contoh: Dilema Konservasi ..." />
+          <label>Gaya Visual</label>
+          <select id="projStyle">
+            <option>Jalur 3C (StageDoc3D PBR + Editorial 2D)</option>
+            <option>2D Editorial Cartography &amp; Data</option>
+            <option>Stage25D Stylized</option>
+          </select>
+          <label>Prompt / Naskah / Arahan Visual</label>
+          <textarea id="projPrompt" placeholder="Tulis topik, fakta terverifikasi, arahan visual, atau naskah VO..."></textarea>
+          <label>Catatan Tambahan</label>
+          <input id="projNotes" placeholder="Misal: 9:16 30fps, target 90 detik, sitasi wajib..." />
+          <div class="btn-row">
+            <button class="btn primary" onclick="saveProject()">Simpan Brief &amp; Prompt</button>
+          </div>
+          <div id="projStatus" class="status-msg"></div>
+        </div>
+
+        <div class="card">
+          <h3>2. Upload Voice-Over Audio (.mp3 / .wav / .m4a)</h3>
+          <label>Target Project Slug</label>
+          <input id="audioSlug" placeholder="episode006_topik_baru" />
+          <label>Pilih File Audio (Max 80 MB)</label>
+          <input id="audioFile" type="file" accept=".mp3,.wav,.m4a,audio/*" />
+          <div class="btn-row">
+            <button class="btn primary" onclick="uploadAudio()">Upload &amp; Analisis Jeda (ffprobe)</button>
+          </div>
+          <div id="audioStatus" class="status-msg"></div>
+          <pre id="audioAnalysis" style="margin-top:12px">Belum ada analisis audio baru.</pre>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3>Daftar Project &amp; Audio Tersimpan</h3>
+        <div id="projectList" class="grid"></div>
+      </div>
+    </section>
+
+    <!-- TAB 5: RENDER & REVISION -->
+    <section id="tab-jobs" class="tab">
+      <div class="grid">
+        <div class="card">
+          <h3>Jalankan Render / Patch di tmux</h3>
+          <label>Komposisi Target</label>
+          <select id="jobComp"></select>
+          <label>Mode Eksekusi</label>
+          <select id="jobMode" onchange="toggleJobInputs()">
+            <option value="stills">Render QA Stills + Contact Sheet (Cepat)</option>
+            <option value="patch">Patch Range Frame Tertentu (--frames=start-end)</option>
+            <option value="render">Render Video Penuh + short_qa.py</option>
+          </select>
+          <div id="framesWrap">
+            <label id="framesLbl">Daftar Frame (koma: 30,120,300 atau range: 176-593)</label>
+            <input id="jobFrames" placeholder="30,120,300" />
+          </div>
+          <div class="btn-row">
+            <button class="btn warn" onclick="triggerJob()">Jalankan di tmux Terpisah</button>
+          </div>
+          <div id="jobStatus" class="status-msg"></div>
+        </div>
+
+        <div class="card">
+          <h3>Catat Permintaan Revisi Video</h3>
+          <label>Episode</label>
+          <input id="revEp" placeholder="Episode 003 / Ep002BadakJawa" />
+          <label>Timestamp / Frame</label>
+          <input id="revTs" placeholder="00:42 atau f1260" />
+          <label>Deskripsi Revisi</label>
+          <textarea id="revNotes" placeholder="Contoh: Perbaiki teks di E3_S09, ganti pose badak di f1341, sesuaikan VO..."></textarea>
+          <div class="btn-row">
+            <button class="btn primary" onclick="submitRevision()">Simpan Catatan Revisi</button>
+          </div>
+          <div id="revStatus" class="status-msg"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const qsParams = new URLSearchParams(window.location.search);
+    if (qsParams.get("api")) {
+      localStorage.setItem("kokisoyo_api_base", qsParams.get("api").replace(/\/+$/, ""));
+    }
+    let API_BASE = localStorage.getItem("kokisoyo_api_base") || "";
+    let PIN = localStorage.getItem("kokisoyo_pin") || "";
+
+    function authHeaders(extra = {}) {
+      return PIN ? { ...extra, "x-studio-pin": PIN } : extra;
+    }
+
+    function apiUrl(path) {
+      return `${API_BASE}${path}`;
+    }
+
+    function withPin(url) {
+      const full = apiUrl(url);
+      if (!PIN) return full;
+      const sep = full.includes("?") ? "&" : "?";
+      return `${full}${sep}pin=${encodeURIComponent(PIN)}`;
+    }
+
+    async function api(url, opts = {}) {
+      if (!API_BASE && window.location.hostname.endsWith("pages.dev")) {
+        document.getElementById("pinGate").classList.remove("hidden");
+        throw new Error("API Base URL required");
+      }
+      const r = await fetch(apiUrl(url), { ...opts, headers: authHeaders(opts.headers || {}) });
+      if (r.status === 401 || (r.status === 404 && !API_BASE)) {
+        document.getElementById("apiBaseInput").value = API_BASE;
+        document.getElementById("pinGate").classList.remove("hidden");
+        throw new Error("Unauthorized");
+      }
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "API error");
+      return data;
+    }
+
+    function openSettings() {
+      document.getElementById("apiBaseInput").value = API_BASE;
+      document.getElementById("pinInput").value = PIN;
+      document.getElementById("pinErr").textContent = "";
+      document.getElementById("pinGate").classList.remove("hidden");
+    }
+
+    async function submitPin() {
+      API_BASE = document.getElementById("apiBaseInput").value.trim().replace(/\/+$/, "");
+      localStorage.setItem("kokisoyo_api_base", API_BASE);
+      PIN = document.getElementById("pinInput").value.trim();
+      try {
+        await api("/api/auth-check");
+        localStorage.setItem("kokisoyo_pin", PIN);
+        document.getElementById("pinGate").classList.add("hidden");
+        document.getElementById("pinErr").textContent = "";
+        initAll();
+      } catch {
+        document.getElementById("pinErr").textContent = "Gagal terhubung atau PIN salah.";
+      }
+    }
+
+    function switchTab(name, btn) {
+      document.querySelectorAll(".tab").forEach((el) => el.classList.remove("active"));
+      document.querySelectorAll("nav button").forEach((el) => el.classList.remove("active"));
+      document.getElementById("tab-" + name).classList.add("active");
+      btn.classList.add("active");
+    }
+
+    async function loadEpisodes() {
+      const data = await api("/api/episodes");
+      const vg = document.getElementById("videoGrid");
+      vg.innerHTML = data.episodes.map((ep) => {
+        const mb = (ep.sizeBytes / 1048576).toFixed(1);
+        const dur = ep.durationSec ? ep.durationSec.toFixed(2) + " dtk" : "-";
+        const vUrl = withPin(`/api/media/video?path=${encodeURIComponent(ep.relPath)}`);
+        const dUrl = withPin(`/api/media/video?path=${encodeURIComponent(ep.relPath)}&download=1`);
+        return `
+          <div class="card">
+            <h3>${ep.id}</h3>
+            <div class="meta">
+              ${mb} MB · ${dur} · ${ep.resolution || "-"} · ${ep.frames || "-"}f · ${ep.audio}
+            </div>
+            <video class="portrait" controls preload="metadata" src="${vUrl}"></video>
+            <div class="btn-row">
+              <a class="btn primary" href="${dUrl}" download>Download MP4</a>
+              <span class="pill">${new Date(ep.mtime).toLocaleString()}</span>
+            </div>
+            ${ep.qaSummary ? `<pre style="margin-top:10px; max-height:140px">${ep.qaSummary}</pre>` : ""}
+          </div>
+        `;
+      }).join("") || "<p>Belum ada file MP4 di folder out/.</p>";
+
+      const sel = document.getElementById("jobComp");
+      sel.innerHTML = Object.entries(data.compositions)
+        .map(([id, c]) => `<option value="${id}">${id} — ${c.label}</option>`)
+        .join("");
+
+      const db = document.getElementById("docButtons");
+      db.innerHTML = data.docs
+        .map((d) => `<button class="btn" onclick="viewDoc('${d.name}')">${d.name.replace("badak_jawa_series/", "")}</button>`)
+        .join("");
+
+      const sg = document.getElementById("sheetGrid");
+      sg.innerHTML = data.sheets.map((s) => {
+        const iUrl = withPin(`/api/media/image?path=${encodeURIComponent(s.name)}`);
+        return `
+          <div class="card">
+            <h3>${s.name}</h3>
+            <a href="${iUrl}" target="_blank"><img class="sheet-img" src="${iUrl}" loading="lazy" /></a>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function viewDoc(name) {
+      const r = await fetch(withPin(`/api/docs?path=${encodeURIComponent(name)}`), { headers: authHeaders() });
+      document.getElementById("docViewer").textContent = await r.text();
+    }
+
+    async function loadStatus() {
+      const st = await api("/api/status");
+      document.getElementById("hdrMeta").textContent =
+        `TMUX: ${st.tmuxSessions.join(", ") || "none"} · PROCS: ${st.activeRenderProcs} · ${st.tunnelUrl || "LOCAL"}`;
+      document.getElementById("monitorMeta").textContent = `${st.uptime}\n`;
+      document.getElementById("prodLogTail").textContent = st.prodLogTail || "(Kosong)";
+      const tp = document.getElementById("tmuxPanes");
+      tp.innerHTML = Object.entries(st.panes)
+        .map(([k, v]) => `<h4 style="margin:12px 0 6px; color:var(--gold)">tmux: ${k}</h4><pre>${v}</pre>`)
+        .join("");
+    }
+
+    async function loadProjects() {
+      const data = await api("/api/projects");
+      const pl = document.getElementById("projectList");
+      pl.innerHTML = data.projects.map((p) => `
+        <div class="card">
+          <h3>${p.title}</h3>
+          <div class="meta">slug: ${p.slug} · ${p.visualStyle || ""}</div>
+          <div style="font-size:13px; color:var(--muted); margin-bottom:10px">${(p.prompt || "").slice(0, 180)}</div>
+          ${p.audio ? `<audio controls style="width:100%" src="${withPin(`/api/media/audio?path=${encodeURIComponent(p.audio.file)}`)}"></audio>` : `<span class="pill">Belum ada audio</span>`}
+        </div>
+      `).join("") || "<p style='color:var(--muted)'>Belum ada project baru di public/projects/.</p>";
+    }
+
+    async function saveProject() {
+      const st = document.getElementById("projStatus");
+      st.className = "status-msg";
+      st.textContent = "Menyimpan...";
+      try {
+        const res = await api("/api/projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slug: document.getElementById("projSlug").value,
+            title: document.getElementById("projTitle").value,
+            visualStyle: document.getElementById("projStyle").value,
+            prompt: document.getElementById("projPrompt").value,
+            notes: document.getElementById("projNotes").value,
+          }),
+        });
+        document.getElementById("audioSlug").value = res.brief.slug;
+        st.textContent = `Tersimpan: public/projects/${res.brief.slug}/brief.json`;
+        loadProjects();
+      } catch (e) {
+        st.className = "status-msg err-msg";
+        st.textContent = e.message;
+      }
+    }
+
+    async function uploadAudio() {
+      const slug = document.getElementById("audioSlug").value.trim();
+      const file = document.getElementById("audioFile").files[0];
+      const st = document.getElementById("audioStatus");
+      if (!slug || !file) {
+        st.className = "status-msg err-msg";
+        st.textContent = "Isi project slug dan pilih file audio dulu.";
+        return;
+      }
+      st.className = "status-msg";
+      st.textContent = "Mengunggah & menganalisis ffprobe...";
+      try {
+        const res = await api(`/api/projects/${encodeURIComponent(slug)}/audio`, {
+          method: "POST",
+          headers: { "x-file-name": file.name, "Content-Type": "application/octet-stream" },
+          body: file,
+        });
+        st.textContent = `Berhasil diunggah: ${res.file} (${(res.sizeBytes / 1048576).toFixed(2)} MB)`;
+        document.getElementById("audioAnalysis").textContent = JSON.stringify(
+          { format: res.probe?.format, silencesCount: res.silences?.length, firstPauses: res.silences?.slice(0, 8) },
+          null,
+          2
+        );
+        loadProjects();
+      } catch (e) {
+        st.className = "status-msg err-msg";
+        st.textContent = e.message;
+      }
+    }
+
+    function toggleJobInputs() {
+      const m = document.getElementById("jobMode").value;
+      document.getElementById("framesWrap").style.display = m === "render" ? "none" : "block";
+    }
+
+    async function triggerJob() {
+      const st = document.getElementById("jobStatus");
+      st.className = "status-msg";
+      st.textContent = "Memulai sesi tmux...";
+      try {
+        const res = await api("/api/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            compId: document.getElementById("jobComp").value,
+            mode: document.getElementById("jobMode").value,
+            frames: document.getElementById("jobFrames").value,
+          }),
+        });
+        st.textContent = `Berjalan di tmux: ${res.sessionName} (log: ${res.logFile})`;
+        loadStatus();
+      } catch (e) {
+        st.className = "status-msg err-msg";
+        st.textContent = e.message;
+      }
+    }
+
+    async function submitRevision() {
+      const st = document.getElementById("revStatus");
+      st.className = "status-msg";
+      try {
+        const res = await api("/api/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "revision_note",
+            targetEpisode: document.getElementById("revEp").value,
+            frames: document.getElementById("revTs").value,
+            notes: document.getElementById("revNotes").value,
+          }),
+        });
+        st.textContent = `Catatan revisi disimpan di ${res.savedTo}`;
+      } catch (e) {
+        st.className = "status-msg err-msg";
+        st.textContent = e.message;
+      }
+    }
+
+    async function initAll() {
+      try {
+        await api("/api/auth-check");
+        await Promise.all([loadEpisodes(), loadStatus(), loadProjects()]);
+        setInterval(() => loadStatus().catch(() => {}), 6000);
+      } catch {}
+    }
+
+    initAll();
+  </script>
+</body>
+</html>
