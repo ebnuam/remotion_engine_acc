@@ -32,6 +32,7 @@ export const DEFAULT_AUTOMATION_CONFIG = Object.freeze({
   publishWindowStartHourLocal: 15,
   primeHourLocal: 19,
   primeMinuteLocal: 0,
+  enableHumanJitter: true,
   minLeadMinutes: 45,
   minElevenLabsChars: 1400,
   agyModel: "gemini-4-hydrogen-high",
@@ -342,11 +343,20 @@ export async function publishNextFromStock({
     fs.copyFileSync(item.videoPath, seoVideoPath);
   }
 
+  const jitterMinutes =
+    cfg.enableHumanJitter === false
+      ? 0
+      : Math.floor(((item.slug.length * 17 + now.getUTCDate() * 7) % 25) - 10); // -10..+14 min organic variance
+  const rawMinute = Number(cfg.primeMinuteLocal ?? 0) + jitterMinutes;
+  const adjHourOffset = Math.floor(rawMinute / 60);
+  const finalMinute = ((rawMinute % 60) + 60) % 60;
+  const finalHour = Math.min(23, Math.max(0, Number(cfg.primeHourLocal ?? 19) + adjHourOffset));
+
   const publishAt = computeNextPrimeTimeISO({
     now,
     utcOffsetHours: Number(cfg.utcOffsetHours ?? 7),
-    primeHourLocal: Number(cfg.primeHourLocal ?? 19),
-    primeMinuteLocal: Number(cfg.primeMinuteLocal ?? 0),
+    primeHourLocal: finalHour,
+    primeMinuteLocal: finalMinute,
     minLeadMinutes: Number(cfg.minLeadMinutes ?? 45),
   });
 

@@ -38,6 +38,11 @@ import {
   saveQueueState,
   shouldProduceMore,
 } from "./stockQueue.mjs";
+import {
+  allocateStrictShots,
+  recordEpisodePattern,
+  selectEpisodePattern,
+} from "./patternDiversity.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -187,6 +192,7 @@ export async function generateEpisodeBlueprint({
   topic,
   slug,
   outDir,
+  pattern = null,
   env = process.env,
   envFile = undefined,
   router = undefined,
@@ -194,13 +200,25 @@ export async function generateEpisodeBlueprint({
   fs.mkdirSync(outDir, { recursive: true });
   const aiRouter = router || createAIRouter({ env, envFile });
 
+  const patternRules = pattern
+    ? [
+        `- GAYA CERITA WAJIB (BEDA POLA): "${pattern.archetype.label}" — ${pattern.archetype.hookRule}`,
+        `- ALUR NARASI: ${pattern.archetype.pacingRule}`,
+        `- MOOD VISUAL DOMINAN: "${pattern.dominantMood}" & kamera pembuka "${pattern.openingCamera}".`,
+        pattern.recentTitles?.length
+          ? `- ANTI-REPETISI: JANGAN tiru struktur judul atau kalimat pembuka dari episode sebelumnya ini: ${pattern.recentTitles.join(" | ")}`
+          : "",
+      ].filter(Boolean)
+    : [];
+
   const prompt = [
     `Buat paket pra-produksi lengkap untuk video edukasi 3D realistis channel "Kok Iso Yo?" dengan topik: "${topic}" (slug: "${slug}").`,
     "Aturan WAJIB (SANGAT KETAT):",
-    "- Narasi Bahasa Indonesia natural, hidup, dan mengalir untuk durasi 65-80 detik: WAJIB 155-185 kata (980-1.300 karakter, TIDAK BOLEH di bawah 950 karakter agar video pasti di atas 1 menit!). Tanpa salam pembuka klise, hook 0-2 detik langsung memancing penasaran, 1 cerita tuntas.",
-    "- Bagi menjadi 20-24 shot berurutan (`durationSec` masing-masing 2.5 - 4.0 detik, total 66-82 detik).",
+    "- Narasi Bahasa Indonesia natural, hidup, dan mengalir untuk durasi 65-82 detik: WAJIB 165-195 kata (1.020-1.350 karakter, TIDAK BOLEH di bawah 1.000 karakter agar durasi suara pasti DI ATAS 60 detik!). Tanpa salam pembuka klise, hook 0-2 detik langsung memancing penasaran, 1 cerita tuntas.",
+    "- Bagi menjadi 20-24 shot berurutan (`durationSec` masing-masing 2.5 - 4.0 detik, TIDAK ADA shot > 4 detik, total 66-84 detik).",
     "- Setiap shot wajib punya `id`, `name`, `durationSec`, `visualBrief` (deskripsi objek 3D PBR realistis, cutaway/kamera, pencahayaan `day_outdoor|golden_hour|night_industrial|studio_macro|underwater_deep`, TANPA stick-figure, TANPA kartun anak-anak), `cameraType` (`wide|medium|closeup`), dan `onScreenLabel` opsional (maks 4 kata, nol emoji).",
-    "- Sertakan `socialPack` untuk YouTube Shorts (judul keyword-driven maks 90 karakter + `#Shorts`, deskripsi 3 paragraf dengan 2 kalimat pertama kaya keyword SEO, 10-12 tags, categoryId '28'), Facebook Reels (`title`, `description`), dan Instagram Reels (`caption`, `firstComment`).",
+    ...patternRules,
+    "- Sertakan `socialPack` untuk YouTube Shorts (judul unik non-template maks 90 karakter + `#Shorts`, deskripsi 3 paragraf dengan 2 kalimat pertama kaya keyword SEO, 10-12 tags, categoryId '28'), Facebook Reels (`title`, `description`), dan Instagram Reels (`caption`, `firstComment`).",
     'Kembalikan HANYA JSON valid berbentuk:',
     '{"narration":"...","shots":[{"id":"S01","name":"...","durationSec":3,"mood":"day_outdoor","cameraType":"wide","visualBrief":"...","onScreenLabel":null}],"socialPack":{"youtube":{"title":"...","description":"...","tags":["..."],"categoryId":"28","privacyStatus":"public"},"facebook":{"title":"...","description":"..."},"instagram":{"caption":"...","firstComment":"..."}}}',
   ].join("\n");
@@ -210,7 +228,7 @@ export async function generateEpisodeBlueprint({
       task,
       model,
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.5,
+      temperature: 0.65,
     });
     return extractJsonObject(res?.content);
   };
@@ -219,12 +237,12 @@ export async function generateEpisodeBlueprint({
     Boolean(
       p &&
         typeof p.narration === "string" &&
-        p.narration.trim().length >= 920 &&
+        p.narration.trim().length >= 980 &&
         Array.isArray(p.shots) &&
-        p.shots.length >= 18
+        p.shots.length >= 19
     );
 
-  // Try PREMIUM script quality directly if preferred, or STANDARD with automatic PREMIUM upgrade if too short
+  // Use PREMIUM model first for rich storytelling & strict >60s length
   let parsed = null;
   try {
     parsed = await callModel(
@@ -245,7 +263,7 @@ export async function generateEpisodeBlueprint({
     }
   }
 
-  if (!parsed || !parsed.narration || !Array.isArray(parsed.shots) || parsed.shots.length < 12) {
+  if (!parsed || !parsed.narration || !Array.isArray(parsed.shots) || parsed.shots.length < 15) {
     throw new Error(`Invalid blueprint JSON generated for ${slug}`);
   }
 
@@ -262,13 +280,14 @@ export async function generateEpisodeBlueprint({
 
 /**
  * Pre-Stage B: Synthesize ElevenLabs voiceover (multi-key) + mix_audio.py in Node.js (0 AI tokens!).
- * Computes exact frame-synced `shots.json` and writes `public/episodes/<slug>/audio_mix.m4a`.
+ * Strictly enforces >60s total duration and <=4.0s per shot (`allocateStrictShots`).
  */
 export async function generateEpisodeAudio({
   rootDir,
   slug,
   outDir,
   blueprint,
+  pattern = null,
   env = process.env,
   envFile = undefined,
   execFileImpl = execFileAsync,
@@ -285,37 +304,16 @@ export async function generateEpisodeAudio({
     outputFormat: "mp3",
   });
 
-  const actualDurationSec = Math.max(
-    45,
-    Number(ttsRes.audioInfo?.actualDurationSec || 70)
-  );
+  const actualDurationSec = Number(ttsRes.audioInfo?.actualDurationSec || 0);
+  if (actualDurationSec < 60.0) {
+    throw new Error(
+      `Narration too short for ${slug}: actualDurationSec=${actualDurationSec.toFixed(2)}s (< 60.0s required).`
+    );
+  }
   const fps = 30;
   const totalFrames = Math.ceil(actualDurationSec * fps) + 15; // 0.5s clean tail
 
-  // Allocate exact integer frame spans matching measured audio duration
-  const rawShots = blueprint.shots;
-  const rawSum = rawShots.reduce((acc, s) => acc + Math.max(2, Number(s.durationSec) || 3), 0);
-  let cursor = 0;
-  const syncedShots = rawShots.map((s, idx) => {
-    const dur = Math.max(2, Number(s.durationSec) || 3);
-    const len =
-      idx === rawShots.length - 1
-        ? Math.max(45, totalFrames - cursor)
-        : Math.max(45, Math.min(120, Math.round((dur / rawSum) * totalFrames)));
-    const start = cursor;
-    const end = idx === rawShots.length - 1 ? totalFrames : Math.min(totalFrames - 30, cursor + len);
-    cursor = end;
-    return {
-      id: s.id || `S${String(idx + 1).padStart(2, "0")}`,
-      name: s.name || `Shot ${idx + 1}`,
-      start,
-      end,
-      mood: s.mood || "day_outdoor",
-      cameraType: s.cameraType || "wide",
-      visualBrief: s.visualBrief || "",
-      onScreenLabel: s.onScreenLabel || null,
-    };
-  });
+  const syncedShots = allocateStrictShots(blueprint.shots, totalFrames, fps, 4.0);
 
   const shotsPath = path.join(outDir, "shots.json");
   fs.writeFileSync(shotsPath, JSON.stringify(syncedShots, null, 2), "utf8");
@@ -325,6 +323,10 @@ export async function generateEpisodeAudio({
   const pyBin = fs.existsSync(path.join(rootDir, ".venv-audio", "bin", "python"))
     ? path.join(rootDir, ".venv-audio", "bin", "python")
     : "python3";
+
+  const musicPreset = pattern?.musicPreset || "curious_doc";
+  const ambience = pattern?.ambience || "none";
+  const musicSeed = String(pattern?.musicSeed || 42);
 
   await execFileImpl(
     pyBin,
@@ -338,7 +340,11 @@ export async function generateEpisodeAudio({
       "--shots",
       shotsPath,
       "--preset",
-      "curious_doc",
+      musicPreset,
+      "--ambience",
+      ambience,
+      "--seed",
+      musicSeed,
       "--duck-db",
       "-4.5",
       "--target-lufs",
@@ -591,23 +597,27 @@ export async function produceNextEpisode({
       return { ok: true, skipped: false, topicItem, registered: reg };
     }
 
-    // Token-saving Split Mode ("agy_custom"):
-    // Pre-Stage A (cheap STANDARD model): script + shots + social_pack
+    // Token-saving Split Mode ("agy_custom") with Anti-Repetition Pattern Diversity:
+    const pattern = selectEpisodePattern(state, topicItem.topic);
+
+    // Pre-Stage A: rich >60s script + <=4s/shot plan + varied YT/FB/IG social_pack
     const blueprintRes = await generateEpisodeBlueprint({
       topic: topicItem.topic,
       slug: topicItem.slug,
       outDir,
+      pattern,
       env: mergedEnv,
       envFile,
       router,
     });
 
-    // Pre-Stage B (0 AI tokens): ElevenLabs multi-key TTS + mix_audio.py + exact frame sync
+    // Pre-Stage B (0 AI tokens): ElevenLabs multi-key TTS + >=60s & <=4s/shot check + varied music bed
     const audioRes = await generateEpisodeAudio({
       rootDir,
       slug: topicItem.slug,
       outDir,
       blueprint: blueprintRes.parsed,
+      pattern,
       env: mergedEnv,
       envFile,
       execFileImpl,
@@ -678,6 +688,7 @@ export async function produceNextEpisode({
       thumbnailPath: thumb.primary,
     });
 
+    recordEpisodePattern(state, { slug: topicItem.slug, pattern });
     topicItem.status = "done";
     topicItem.error = null;
     saveQueueState(statePath, state);

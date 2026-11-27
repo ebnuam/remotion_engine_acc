@@ -14,6 +14,11 @@ import {
   shouldProduceMore,
 } from "./stockQueue.mjs";
 import { startLocalMediaServer } from "./ephemeralMediaHost.mjs";
+import {
+  allocateStrictShots,
+  recordEpisodePattern,
+  selectEpisodePattern,
+} from "./patternDiversity.mjs";
 import { produceNextEpisode } from "./productionWorker.mjs";
 
 function makeTempDir() {
@@ -121,6 +126,7 @@ test("publishNextFromStock executes 5-Step YouTube SOP and persists history", as
 
     const statePath = path.join(tmpDir, "queue_state.json");
     const state = loadQueueState(statePath);
+    state.config.enableHumanJitter = false;
     const reg = registerStockItem(state, { slug: "ep_test", jobDir });
     assert.equal(reg.added, true);
     saveQueueState(statePath, state);
@@ -240,5 +246,35 @@ test("startLocalMediaServer serves exact token path with Range support and rejec
   } finally {
     await srv.close();
     fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("patternDiversity rotates non-repeating archetypes/moods and allocateStrictShots enforces <= 4.0s per shot on >60s videos", () => {
+  const state = loadQueueState("/tmp/nonexistent-kokisoyo-pattern.json");
+  const p1 = selectEpisodePattern(state, "Kenapa jembatan laut tidak hanyut?");
+  recordEpisodePattern(state, { slug: "ep1", pattern: p1 });
+  const p2 = selectEpisodePattern(state, "Kenapa pesawat disambar petir aman?");
+  recordEpisodePattern(state, { slug: "ep2", pattern: p2 });
+  const p3 = selectEpisodePattern(state, "Kenapa lidah kucing kasar?");
+
+  assert.notEqual(p1.archetype.id, p2.archetype.id);
+  assert.notEqual(p2.archetype.id, p3.archetype.id);
+  assert.notEqual(p1.musicPreset, p2.musicPreset);
+  assert.notEqual(p1.dominantMood, p2.dominantMood);
+
+  // Even if AI only gave 12 coarse shots for a 75s (2250 frames) video,
+  // allocateStrictShots MUST subdivide so EVERY shot is <= 120 frames (4.0s)!
+  const coarseShots = Array.from({ length: 12 }, (_, i) => ({
+    id: `S${i + 1}`,
+    durationSec: 6.25,
+    cameraType: "wide",
+  }));
+  const strict = allocateStrictShots(coarseShots, 2250, 30, 4.0);
+  assert.ok(strict.length >= 19, `Expected >=19 shots for 75s video, got ${strict.length}`);
+  assert.equal(strict[0].start, 0);
+  assert.equal(strict[strict.length - 1].end, 2250);
+  for (const s of strict) {
+    const durFrames = s.end - s.start;
+    assert.ok(durFrames <= 120, `Shot ${s.id} exceeded 4.0s (${durFrames} frames)`);
   }
 });
