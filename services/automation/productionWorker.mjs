@@ -196,33 +196,55 @@ export async function generateEpisodeBlueprint({
 
   const prompt = [
     `Buat paket pra-produksi lengkap untuk video edukasi 3D realistis channel "Kok Iso Yo?" dengan topik: "${topic}" (slug: "${slug}").`,
-    "Aturan WAJIB:",
-    "- Narasi Bahasa Indonesia natural & mengalir untuk durasi 65-78 detik (~145-175 kata, ~950-1250 karakter, tanpa salam pembuka klise, hook 0-2 detik langsung memancing penasaran, 1 cerita tuntas).",
-    "- Bagi menjadi 20-22 shot berurutan (`durationSec` masing-masing 2.5 - 4.0 detik, total 68-78 detik).",
+    "Aturan WAJIB (SANGAT KETAT):",
+    "- Narasi Bahasa Indonesia natural, hidup, dan mengalir untuk durasi 65-80 detik: WAJIB 155-185 kata (980-1.300 karakter, TIDAK BOLEH di bawah 950 karakter agar video pasti di atas 1 menit!). Tanpa salam pembuka klise, hook 0-2 detik langsung memancing penasaran, 1 cerita tuntas.",
+    "- Bagi menjadi 20-24 shot berurutan (`durationSec` masing-masing 2.5 - 4.0 detik, total 66-82 detik).",
     "- Setiap shot wajib punya `id`, `name`, `durationSec`, `visualBrief` (deskripsi objek 3D PBR realistis, cutaway/kamera, pencahayaan `day_outdoor|golden_hour|night_industrial|studio_macro|underwater_deep`, TANPA stick-figure, TANPA kartun anak-anak), `cameraType` (`wide|medium|closeup`), dan `onScreenLabel` opsional (maks 4 kata, nol emoji).",
     "- Sertakan `socialPack` untuk YouTube Shorts (judul keyword-driven maks 90 karakter + `#Shorts`, deskripsi 3 paragraf dengan 2 kalimat pertama kaya keyword SEO, 10-12 tags, categoryId '28'), Facebook Reels (`title`, `description`), dan Instagram Reels (`caption`, `firstComment`).",
     'Kembalikan HANYA JSON valid berbentuk:',
     '{"narration":"...","shots":[{"id":"S01","name":"...","durationSec":3,"mood":"day_outdoor","cameraType":"wide","visualBrief":"...","onScreenLabel":null}],"socialPack":{"youtube":{"title":"...","description":"...","tags":["..."],"categoryId":"28","privacyStatus":"public"},"facebook":{"title":"...","description":"..."},"instagram":{"caption":"...","firstComment":"..."}}}',
   ].join("\n");
 
-  let res;
+  const callModel = async (task, model) => {
+    const res = await aiRouter.chatCompletion({
+      task,
+      model,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.5,
+    });
+    return extractJsonObject(res?.content);
+  };
+
+  const isQualityBlueprint = (p) =>
+    Boolean(
+      p &&
+        typeof p.narration === "string" &&
+        p.narration.trim().length >= 920 &&
+        Array.isArray(p.shots) &&
+        p.shots.length >= 18
+    );
+
+  // Try PREMIUM script quality directly if preferred, or STANDARD with automatic PREMIUM upgrade if too short
+  let parsed = null;
   try {
-    res = await aiRouter.chatCompletion({
-      task: "post_copy",
-      model: env.AI_STANDARD_MODEL || env.AGYBRIDGE_DEFAULT_MODEL || "gemini-2.5-flash",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.5,
-    });
+    parsed = await callModel(
+      "script_master",
+      env.AI_PREMIUM_MODEL || "gemini-4-hydrogen-high"
+    );
   } catch {
-    res = await aiRouter.chatCompletion({
-      task: "script_master",
-      model: env.AI_PREMIUM_MODEL || "gemini-4-hydrogen-high",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.5,
-    });
+    parsed = null;
   }
 
-  const parsed = extractJsonObject(res?.content);
+  if (!isQualityBlueprint(parsed)) {
+    const stdParsed = await callModel(
+      "post_copy",
+      env.AI_STANDARD_MODEL || env.AGYBRIDGE_DEFAULT_MODEL || "gemini-2.5-flash"
+    );
+    if (isQualityBlueprint(stdParsed) || !parsed) {
+      parsed = stdParsed;
+    }
+  }
+
   if (!parsed || !parsed.narration || !Array.isArray(parsed.shots) || parsed.shots.length < 12) {
     throw new Error(`Invalid blueprint JSON generated for ${slug}`);
   }
