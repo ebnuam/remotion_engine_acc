@@ -293,6 +293,35 @@ export async function generateEpisodeAudio({
   execFileImpl = execFileAsync,
   ttsRouter = undefined,
 }) {
+  const ttsMetaPath = path.join(outDir, "voiceover.tts_meta.json");
+  const existingShotsPath = path.join(outDir, "shots.json");
+  const pubEpDir = path.join(rootDir, "public", "episodes", slug);
+  const publicAudioAbs = path.join(pubEpDir, "audio_mix.m4a");
+
+  // Reuse already-generated valid >60s audio (saves 100% ElevenLabs chars on retries/re-renders!)
+  if (fs.existsSync(ttsMetaPath) && fs.existsSync(publicAudioAbs)) {
+    try {
+      const prevMeta = JSON.parse(fs.readFileSync(ttsMetaPath, "utf8"));
+      const prevDur = Number(prevMeta?.audioInfo?.actualDurationSec || 0);
+      if (prevDur >= 60.0) {
+        const fps = 30;
+        const totalFrames = Math.ceil(prevDur * fps) + 15;
+        const syncedShots = allocateStrictShots(blueprint.shots, totalFrames, fps, 4.0);
+        fs.writeFileSync(existingShotsPath, JSON.stringify(syncedShots, null, 2), "utf8");
+        return {
+          actualDurationSec: prevDur,
+          totalFrames,
+          fps,
+          shotsPath: existingShotsPath,
+          publicAudioRelPath: `episodes/${slug}/audio_mix.m4a`,
+          ttsUsage: { reusedExisting: true, billedCharCount: 0 },
+        };
+      }
+    } catch {
+      // Fall through to fresh TTS synthesis
+    }
+  }
+
   const router = ttsRouter || createDefaultTTSRouter({ env, envFile });
   const text = String(blueprint.narration || "").trim();
   const ttsRes = await router.synthesize({
@@ -358,10 +387,8 @@ export async function generateEpisodeAudio({
     { cwd: rootDir, timeout: 120_000 }
   );
 
-  const pubEpDir = path.join(rootDir, "public", "episodes", slug);
   fs.mkdirSync(pubEpDir, { recursive: true });
   const mixM4a = path.join(mixOutDir, "mix.m4a");
-  const publicAudioAbs = path.join(pubEpDir, "audio_mix.m4a");
   fs.copyFileSync(mixM4a, publicAudioAbs);
 
   return {
@@ -404,8 +431,8 @@ export function buildHeadlessAgyPrompt({
     "",
     "ATURAN KUALITAS 3D REALISTIS (WAJIB — BUKAN KARTUN ANAK-ANAK!):",
     "1. JANGAN sentuh `src/bridge/`, `public/bridge/`, `src/ship/`, `src/ep2_badak/`, `src/ep003_jembatan_laut/`, atau `out/ep003_jembatan_laut/`.",
-    "2. WAJIB pakai **`StageDoc3D`** (`src/shared/doc3d/StageDoc3D.tsx`) + **`cinematicRealism.ts`** (`src/shared/doc3d/cinematicRealism.ts`: `createPbrMaterial`, `applyCinematicRig`, `frameHeroSafe9x16`) untuk shading PBR realistis (ACESFilmic, bayangan lembut, tekstur prosedural, rim light, fog atmosfer).",
-    "3. DILARANG stick-figure 2D, DILARANG garis outline kartun tebal, DILARANG properti kotak polos seperti mainan. Bangun geometri 3D detail (lathe/extrude/bevel/layered mechanical/organic assemblies) yang tampak seperti dokumenter teknik/sains modern.",
+    "2. WAJIB pakai **`StageDoc3D`** (`src/shared/doc3d/StageDoc3D.tsx`) + **`cinematicRealism.ts`** (`src/shared/doc3d/cinematicRealism.ts`: `createPbrMaterial`, `applyCinematicRig`, `frameHeroSafe9x16`, `createSculptedTerrain`) untuk shading PBR realistis (ACESFilmic, bayangan lembut, tekstur prosedural, rim light, fog atmosfer).",
+    "3. DILARANG stick-figure 2D, DILARANG garis outline kartun tebal, DILARANG properti kotak polos seperti mainan, dan DILARANG gunung/bukit kerucut tajam (`ConeGeometry`) — gunakan `createSculptedTerrain()` dan geometri 3D detail (lathe/extrude/bevel/layered mechanical/organic assemblies) yang tampak seperti dokumenter teknik/sains modern.",
     "4. ANTI FRAME KEPOTONG: gunakan `frameHeroSafe9x16(camera, target, bounds, { marginPercent: 0.20, fovDeg: 38, ... })` pada setiap shot sehingga seluruh subjek utama berada di zona aman 9:16 dan tidak terpotong tepi layar maupun ketutup UI YouTube Shorts.",
     "5. ANTI SUBTITLE PERMANEN & NOL EMOJI. Label teks (`renderOverlay`) hanya opsional 2-4 kata informatif di area aman atas.",
     "",

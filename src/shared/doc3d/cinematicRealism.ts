@@ -385,3 +385,48 @@ export function frameHeroSafe9x16(
 
   return { distance: dist };
 }
+
+/**
+ * Generates an organic multi-ridge 3D terrain / mountain range mesh using displaced vertices
+ * (replaces artificial-looking ConeGeometry pyramids with natural documentary topography).
+ */
+export function createSculptedTerrain(opts: {
+  width?: number;
+  depth?: number;
+  segments?: number;
+  maxHeight?: number;
+  seed?: number;
+  color?: string | number;
+  roughness?: number;
+} = {}): THREE.Mesh {
+  const width = opts.width ?? 140;
+  const depth = opts.depth ?? 100;
+  const segs = Math.min(96, Math.max(24, opts.segments ?? 48));
+  const maxHeight = opts.maxHeight ?? 24;
+  const seed = opts.seed ?? 17;
+
+  const geo = new THREE.PlaneGeometry(width, depth, segs, segs);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i += 1) {
+    const x = pos.getX(i);
+    const z = pos.getZ(i);
+    const ridge1 = Math.sin(x * 0.065 + seed) * Math.cos(z * 0.07 - seed * 0.5);
+    const ridge2 = Math.sin(x * 0.14 - z * 0.11 + seed * 1.7) * 0.45;
+    const ridge3 = Math.cos(x * 0.27 + z * 0.23) * 0.18;
+    const edgeFade = Math.max(0, 1 - Math.pow(Math.abs(x) / (width * 0.55), 2));
+    const h = Math.max(0, (ridge1 * 0.5 + 0.5 + ridge2 + ridge3) * 0.55 * maxHeight * edgeFade);
+    pos.setY(i, h);
+  }
+  geo.computeVertexNormals();
+
+  const mat = createPbrMaterial("cast_concrete", {
+    color: opts.color ?? 0x5f6b63,
+    roughness: opts.roughness ?? 0.92,
+    metalness: 0.02,
+    repeat: [6, 6],
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.receiveShadow = true;
+  return mesh;
+}
