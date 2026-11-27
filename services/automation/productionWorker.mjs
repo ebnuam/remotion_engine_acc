@@ -638,8 +638,6 @@ export async function produceNextEpisode({
 
     const agyArgs = [
       "--dangerously-skip-permissions",
-      "--mode",
-      "auto",
       "--model",
       String(cfg.agyModel || "gemini-4-hydrogen-high"),
       "--output-format",
