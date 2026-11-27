@@ -581,15 +581,16 @@
       try {
         const r = await apiFetch("/api/episodes");
         const d = await r.json();
-        const vids = d.videos || [];
+        const vids = d.episodes || d.videos || [];
         if (!vids.length) { grid.innerHTML = '<div class="card">Belum ada file MP4 di folder out/.</div>'; return; }
         grid.innerHTML = vids.map((v) => {
           const url = apiUrl(`/api/media/video?path=${encodeURIComponent(v.relPath)}&pin=${encodeURIComponent(PIN)}`);
           const dl = apiUrl(`/api/media/video?path=${encodeURIComponent(v.relPath)}&download=1&pin=${encodeURIComponent(PIN)}`);
           const mb = (v.sizeBytes / 1048576).toFixed(1);
+          const dur = v.durationSec ? `${v.durationSec.toFixed(1)}s` : "-";
           return `<div class="card">
             <h3>${esc(v.relPath)}</h3>
-            <div class="meta">${mb} MB · ${esc(v.mtime)}</div>
+            <div class="meta">${mb} MB · ${dur} · ${esc(v.resolution || "-")} · ${esc(v.audio || "-")}</div>
             <video class="portrait" controls preload="metadata" src="${url}"></video>
             <div class="btn-row"><a class="btn primary" href="${dl}">Download MP4</a></div>
           </div>`;
