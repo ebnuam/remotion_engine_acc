@@ -101,17 +101,23 @@ export function acquireWorkerLock(lockPath) {
 
 function extractJsonObject(raw) {
   const txt = String(raw || "").trim();
-  const fenced = txt.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = fenced ? fenced[1].trim() : txt;
-  const first = candidate.indexOf("{");
-  const last = candidate.lastIndexOf("}");
-  if (first < 0 || last <= first) return null;
-  const slice = candidate.slice(first, last + 1);
-  try {
-    return JSON.parse(slice);
-  } catch {
-    return JSON.parse(slice.replace(/,\s*([}\]])/g, "$1"));
+  const blocks = [...txt.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)].map((m) => m[1].trim());
+  const candidates = [...blocks, txt];
+  for (const cand of candidates) {
+    const first = cand.indexOf("{");
+    const last = cand.lastIndexOf("}");
+    if (first < 0 || last <= first) continue;
+    const slice = cand.slice(first, last + 1);
+    for (const attempt of [slice, slice.replace(/,\s*([}\]])/g, "$1")]) {
+      try {
+        const obj = JSON.parse(attempt);
+        if (obj && typeof obj === "object" && !Array.isArray(obj)) return obj;
+      } catch {
+        // Try next candidate
+      }
+    }
   }
+  return null;
 }
 
 export async function scoutTopics({
@@ -198,6 +204,42 @@ export async function generateEpisodeBlueprint({
   router = undefined,
 }) {
   fs.mkdirSync(outDir, { recursive: true });
+  const scriptPath = path.join(outDir, "script.txt");
+  const socialPath = path.join(outDir, "social_pack.json");
+  const blueprintPath = path.join(outDir, "blueprint.json");
+  const existingShotsPath = path.join(outDir, "shots.json");
+
+  // Reuse valid existing >60s script & shots if already generated (saves tokens!)
+  if (fs.existsSync(scriptPath) && fs.existsSync(socialPath) && fs.existsSync(existingShotsPath)) {
+    const existingScript = fs.readFileSync(scriptPath, "utf8").trim();
+    if (existingScript.length >= 950) {
+      try {
+        const existingShots = JSON.parse(fs.readFileSync(existingShotsPath, "utf8"));
+        const existingSocial = JSON.parse(fs.readFileSync(socialPath, "utf8"));
+        const shotArr = Array.isArray(existingShots) ? existingShots : existingShots?.shots || [];
+        if (shotArr.length >= 12) {
+          const reused = {
+            narration: existingScript,
+            shots: shotArr.map((s, i) => ({
+              id: s.id || `S${String(i + 1).padStart(2, "0")}`,
+              name: s.name || s.title || `Shot ${i + 1}`,
+              durationSec: s.durationSec || Math.max(2.5, ((s.end ?? 90) - (s.start ?? 0)) / 30),
+              mood: s.mood || "day_outdoor",
+              cameraType: s.cameraType || "wide",
+              visualBrief: s.visualBrief || s.name || "",
+              onScreenLabel: s.onScreenLabel || null,
+            })),
+            socialPack: existingSocial,
+          };
+          fs.writeFileSync(blueprintPath, JSON.stringify(reused, null, 2), "utf8");
+          return { parsed: reused, scriptPath, socialPath, blueprintPath };
+        }
+      } catch {
+        // Fall through to fresh blueprint generation
+      }
+    }
+  }
+
   const aiRouter = router || createAIRouter({ env, envFile });
 
   const patternRules = pattern
@@ -214,62 +256,60 @@ export async function generateEpisodeBlueprint({
   const prompt = [
     `Buat paket pra-produksi lengkap untuk video edukasi 3D realistis channel "Kok Iso Yo?" dengan topik: "${topic}" (slug: "${slug}").`,
     "Aturan WAJIB (SANGAT KETAT):",
-    "- Narasi Bahasa Indonesia natural, hidup, dan mengalir untuk durasi 65-82 detik: WAJIB 165-195 kata (1.020-1.350 karakter, TIDAK BOLEH di bawah 1.000 karakter agar durasi suara pasti DI ATAS 60 detik!). Tanpa salam pembuka klise, hook 0-2 detik langsung memancing penasaran, 1 cerita tuntas.",
+    "- Narasi Bahasa Indonesia natural, hidup, dan mengalir untuk durasi 65-82 detik: WAJIB 165-195 kata (1.020-1.350 karakter, TIDAK BOLEH di bawah 980 karakter agar durasi suara pasti DI ATAS 60 detik!). Tanpa salam pembuka klise, hook 0-2 detik langsung memancing penasaran, 1 cerita tuntas.",
     "- Bagi menjadi 20-24 shot berurutan (`durationSec` masing-masing 2.5 - 4.0 detik, TIDAK ADA shot > 4 detik, total 66-84 detik).",
-    "- Setiap shot wajib punya `id`, `name`, `durationSec`, `visualBrief` (deskripsi objek 3D PBR realistis, cutaway/kamera, pencahayaan `day_outdoor|golden_hour|night_industrial|studio_macro|underwater_deep`, TANPA stick-figure, TANPA kartun anak-anak), `cameraType` (`wide|medium|closeup`), dan `onScreenLabel` opsional (maks 4 kata, nol emoji).",
+    "- Setiap shot wajib punya `id`, `name`, `durationSec`, `visualBrief` (deskripsi objek 3D PBR realistis, cutaway/kamera, pencahayaan `day_outdoor|golden_hour|night_industrial|studio_macro|underwater_deep`, TANPA stick-figure, TANPA kartun anak-anak, TANPA logo koin outro), `cameraType` (`wide|medium|closeup`), dan `onScreenLabel` opsional (maks 4 kata, nol emoji).",
     ...patternRules,
     "- Sertakan `socialPack` untuk YouTube Shorts (judul unik non-template maks 90 karakter + `#Shorts`, deskripsi 3 paragraf dengan 2 kalimat pertama kaya keyword SEO, 10-12 tags, categoryId '28'), Facebook Reels (`title`, `description`), dan Instagram Reels (`caption`, `firstComment`).",
     'Kembalikan HANYA JSON valid berbentuk:',
     '{"narration":"...","shots":[{"id":"S01","name":"...","durationSec":3,"mood":"day_outdoor","cameraType":"wide","visualBrief":"...","onScreenLabel":null}],"socialPack":{"youtube":{"title":"...","description":"...","tags":["..."],"categoryId":"28","privacyStatus":"public"},"facebook":{"title":"...","description":"..."},"instagram":{"caption":"...","firstComment":"..."}}}',
   ].join("\n");
 
-  const callModel = async (task, model) => {
+  const callBridgeModel = async (model) => {
     const res = await aiRouter.chatCompletion({
-      task,
+      task: "post_copy",
       model,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.65,
     });
-    return extractJsonObject(res?.content);
+    return { parsed: extractJsonObject(res?.content), rawPreview: String(res?.content || "").slice(0, 180) };
   };
 
   const isQualityBlueprint = (p) =>
     Boolean(
       p &&
         typeof p.narration === "string" &&
-        p.narration.trim().length >= 980 &&
+        p.narration.trim().length >= 950 &&
         Array.isArray(p.shots) &&
-        p.shots.length >= 19
+        p.shots.length >= 12
     );
 
-  // Use PREMIUM model first for rich storytelling & strict >60s length
+  // Fast, token-efficient AGYBridge Hydrogen Tiered High -> fallback Gemini 3 Flash -> 2.5 Flash
   let parsed = null;
-  try {
-    parsed = await callModel(
-      "script_master",
-      env.AI_PREMIUM_MODEL || "gemini-4-neon-high"
-    );
-  } catch {
-    parsed = null;
-  }
-
-  if (!isQualityBlueprint(parsed)) {
-    const stdParsed = await callModel(
-      "post_copy",
-      env.AI_STANDARD_MODEL || env.AGYBRIDGE_DEFAULT_MODEL || "gemini-2.5-flash"
-    );
-    if (isQualityBlueprint(stdParsed) || !parsed) {
-      parsed = stdParsed;
+  let lastPreview = "";
+  for (const model of [
+    env.AI_BLUEPRINT_MODEL || "gemini-4-hydrogen-tiered-high",
+    "gemini-3-flash",
+    env.AI_STANDARD_MODEL || env.AGYBRIDGE_DEFAULT_MODEL || "gemini-2.5-flash",
+  ]) {
+    try {
+      const attempt = await callBridgeModel(model);
+      lastPreview = attempt.rawPreview;
+      if (isQualityBlueprint(attempt.parsed)) {
+        parsed = attempt.parsed;
+        break;
+      }
+      if (attempt.parsed?.narration && Array.isArray(attempt.parsed?.shots) && !parsed) {
+        parsed = attempt.parsed;
+      }
+    } catch {
+      // Try next bridge model
     }
   }
 
-  if (!parsed || !parsed.narration || !Array.isArray(parsed.shots) || parsed.shots.length < 15) {
-    throw new Error(`Invalid blueprint JSON generated for ${slug}`);
+  if (!parsed || !parsed.narration || !Array.isArray(parsed.shots) || parsed.shots.length < 10) {
+    throw new Error(`Invalid blueprint JSON generated for ${slug} (preview: ${lastPreview})`);
   }
-
-  const scriptPath = path.join(outDir, "script.txt");
-  const socialPath = path.join(outDir, "social_pack.json");
-  const blueprintPath = path.join(outDir, "blueprint.json");
 
   fs.writeFileSync(scriptPath, `${String(parsed.narration).trim()}\n`, "utf8");
   fs.writeFileSync(socialPath, JSON.stringify(parsed.socialPack || {}, null, 2), "utf8");
@@ -434,7 +474,8 @@ export function buildHeadlessAgyPrompt({
     "2. WAJIB pakai **`StageDoc3D`** (`src/shared/doc3d/StageDoc3D.tsx`) + **`cinematicRealism.ts`** (`src/shared/doc3d/cinematicRealism.ts`: `createPbrMaterial`, `applyCinematicRig`, `frameHeroSafe9x16`, `createSculptedTerrain`) untuk shading PBR realistis (ACESFilmic, bayangan lembut, tekstur prosedural, rim light, fog atmosfer).",
     "3. DILARANG stick-figure 2D, DILARANG garis outline kartun tebal, DILARANG properti kotak polos seperti mainan, dan DILARANG gunung/bukit kerucut tajam (`ConeGeometry`) — gunakan `createSculptedTerrain()` dan geometri 3D detail (lathe/extrude/bevel/layered mechanical/organic assemblies) yang tampak seperti dokumenter teknik/sains modern.",
     "4. ANTI FRAME KEPOTONG & ANTI FRAME PUTIH AWAL: gunakan `frameHeroSafe9x16(camera, target, bounds, { marginPercent: 0.20, fovDeg: 38, ... })` pada setiap shot. FRAME 0–5 WAJIB LANGSUNG MENAMPILKAN VISUAL HERO 3D PENUH (DILARANG frame putih, frame hitam, flash putih, atau fade-in dari kosong di Frame 0, karena Frame 0 dipakai sebagai cover preview Reels!).",
-    "5. ANTI SUBTITLE PERMANEN & NOL EMOJI. Label teks (`renderOverlay`) hanya opsional 2-4 kata informatif di area aman atas.",
+    "5. DILARANG OUTRO LOGO KOIN / KARTU CHANNEL: Jangan pernah membuat scene penutup berupa logo koin, badge bulat 'KOK ISO YO?', atau kartu outro statis! Shot terakhir WAJIB menampilkan visual 3D klimaks/payoff nyata dari topik (contoh: sistem bekerja sempurna di dunia nyata).",
+    "6. SINKRON AUDIO KETAT & ANTI SUBTITLE PERMANEN: `durationInFrames` WAJIB PERSIS `${totalFrames}` (JANGAN lebih panjang dari audio agar tidak ada bagian bisu di akhir!), NOL emoji, dan teks overlay hanya label singkat opsional 2-4 kata.",
     "",
     "LANGKAH HEMAT TOKEN (MAKSIMAL 12-18 TOOL CALLS):",
     `1. Baca HANYA \`${outDir}/shots.json\`, \`src/shared/doc3d/StageDoc3D.tsx\`, dan \`src/shared/doc3d/cinematicRealism.ts\`.`,
@@ -507,6 +548,10 @@ export async function renderAndQaEpisode({
       if (whiteFrames.some((f) => f <= 2)) {
         throw new Error(`QA gate failed for ${slug}: Frame 0-2 is blank white (${whiteMatch[1]}) in ${reportPath}`);
       }
+    }
+    const silenceMatches = [...report.matchAll(/silence_duration:\s*([0-9.]+)/g)];
+    if (silenceMatches.some((m) => Number(m[1]) > 4.0)) {
+      throw new Error(`QA gate failed for ${slug}: long silence span (>4s) detected in ${reportPath}`);
     }
   }
 
