@@ -7,10 +7,24 @@
 
 import http from "node:http";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
-import { createAIGateway } from "../services/ai-gateway/index.mjs";
+import { createAIGateway, createAIRouter, loadEnvFile } from "../services/ai-gateway/index.mjs";
+import { createElevenLabsAdapter } from "../services/tts-gateway/providers/elevenLabsAdapter.mjs";
+import { getPlatformReadiness } from "../services/pipeline/publishers/index.mjs";
+import { computeNextPrimeTimeISO } from "../services/pipeline/publishers/youtube.mjs";
+import {
+  canPublishToday,
+  enqueueTopic,
+  loadQueueState,
+  publishNextFromStock,
+  resolveConfiguredPlatforms,
+  saveQueueState,
+  shouldProduceMore,
+} from "../services/automation/stockQueue.mjs";
+import { isRenderProcessActive, scoutTopics } from "../services/automation/productionWorker.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -22,6 +36,8 @@ const PROJECTS_DIR = path.join(ROOT, "public", "projects");
 const LOGS_DIR = path.join(ROOT, "logs");
 const DATA_DIR = path.join(ROOT, "dashboard", "data");
 const QUOTA_FILE = path.join(DATA_DIR, "ai_quota.json");
+const AUTOMATION_STATE_FILE = path.join(OUT_DIR, "automation", "queue_state.json");
+const AUTOMATION_ENV_FILE = path.join(os.homedir(), ".config", "kokisoyo", "agybridge_render.env");
 
 const PORT = Number(process.env.STUDIO_PORT || 3010);
 const HOST = process.env.STUDIO_HOST || "127.0.0.1";
@@ -800,6 +816,331 @@ exec bash
   return { ok: true, sessionName, logFile: `logs/${sessionName}.log` };
 }
 
+function getAutomationEnv() {
+  return {
+    ...loadEnvFile(AUTOMATION_ENV_FILE),
+    ...process.env,
+  };
+}
+
+function detectLocalAgyAuthInfo() {
+  const logDir = path.join(os.homedir(), ".gemini", "antigravity-cli", "log");
+  let latestEmail = "unknown";
+  let latestTime = null;
+  try {
+    if (fs.existsSync(logDir)) {
+      const files = fs
+        .readdirSync(logDir)
+        .filter((f) => f.startsWith("cli-") && f.endsWith(".log"))
+        .sort()
+        .slice(-5)
+        .reverse();
+      for (const f of files) {
+        const content = fs.readFileSync(path.join(logDir, f), "utf8");
+        const matches = [...content.matchAll(/authenticated successfully as ([^\s]+)/g)];
+        if (matches.length > 0) {
+          latestEmail = matches[matches.length - 1][1];
+          latestTime = f;
+          break;
+        }
+      }
+    }
+  } catch {
+    // Ignore log read errors
+  }
+  return { email: latestEmail, logFile: latestTime };
+}
+
+async function listPm2Summary() {
+  const res = await runSafe("pm2", ["jlist"], 5000);
+  if (!res.ok || !res.stdout) return [];
+  try {
+    const arr = JSON.parse(res.stdout);
+    return arr.map((p) => ({
+      name: p.name,
+      status: p.pm2_env?.status || "unknown",
+      restarts: p.pm2_env?.restart_time ?? 0,
+      cpu: p.monit?.cpu ?? 0,
+      memoryMb: Math.round((p.monit?.memory ?? 0) / 1048576),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function readPm2AutomationLogTail(lines = 30) {
+  const p = path.join(os.homedir(), ".pm2", "logs", "kokisoyo-automation-out.log");
+  if (!fs.existsSync(p)) return "(belum ada log kokisoyo-automation)";
+  const content = fs.readFileSync(p, "utf8").split("\n");
+  return content.slice(-lines).join("\n");
+}
+
+function discoverPublishedSnapshots() {
+  const items = [];
+  for (const dirName of ["ep003_jembatan_laut"]) {
+    const p = path.join(OUT_DIR, dirName, "youtube_publish.json");
+    if (fs.existsSync(p)) {
+      try {
+        const d = JSON.parse(fs.readFileSync(p, "utf8"));
+        items.push({
+          slug: dirName,
+          title: d.uploadSlug || dirName,
+          youtubeUrl: d.url || null,
+          privacyStatus: d.privacyStatus || d.status || "published",
+          publishAt: d.publishAt || d.publishedAt || null,
+          platforms: ["youtube"],
+        });
+      } catch {
+        // Ignore parse error
+      }
+    }
+  }
+  const pipePesawat = path.join(OUT_DIR, "pipeline", "ep_test_ban_pesawat_v4_laura", "youtube_publish.json");
+  if (fs.existsSync(pipePesawat)) {
+    try {
+      const d = JSON.parse(fs.readFileSync(pipePesawat, "utf8"));
+      items.push({
+        slug: "ep_test_ban_pesawat_v4_laura",
+        title: d.title || "Ban Pesawat",
+        youtubeUrl: d.url || null,
+        privacyStatus: d.privacyStatus || "public",
+        publishAt: d.publishedAt || null,
+        platforms: ["youtube"],
+      });
+    } catch {
+      // Ignore
+    }
+  }
+  return items;
+}
+
+async function handleAutomationStatus() {
+  const env = getAutomationEnv();
+  const state = loadQueueState(AUTOMATION_STATE_FILE);
+  const elAdapter = createElevenLabsAdapter({ env, envFile: AUTOMATION_ENV_FILE });
+  const [elevenLabs, renderActive, pm2List, agyProcsRes, automationLogTail] = await Promise.all([
+    elAdapter.checkQuotas().catch(() => ({ keys: [], totalRemainingChars: 0 })),
+    isRenderProcessActive(),
+    listPm2Summary(),
+    runSafe("bash", ["-c", "ps -eo pid,lstart,args | grep -E 'agy --continue|agy --dangerously' | grep -v grep | wc -l"]),
+    readPm2AutomationLogTail(25),
+  ]);
+
+  const readiness = getPlatformReadiness(env);
+  const activePlatforms = resolveConfiguredPlatforms(env);
+  const produceCheck = shouldProduceMore(state);
+  const publishCheck = canPublishToday(state, new Date());
+  const nextPrimeTimeISO = computeNextPrimeTimeISO({
+    utcOffsetHours: Number(state.config?.utcOffsetHours ?? 7),
+    primeHourLocal: Number(state.config?.primeHourLocal ?? 19),
+    primeMinuteLocal: Number(state.config?.primeMinuteLocal ?? 0),
+    minLeadMinutes: Number(state.config?.minLeadMinutes ?? 45),
+  });
+
+  const combinedHistory = [
+    ...(state.publishedHistory || []),
+    ...discoverPublishedSnapshots().filter(
+      (snap) => !(state.publishedHistory || []).some((h) => h.slug === snap.slug)
+    ),
+  ];
+
+  const localAgy = detectLocalAgyAuthInfo();
+
+  return {
+    now: new Date().toISOString(),
+    renderActive,
+    pm2: pm2List,
+    platforms: {
+      readiness,
+      activePlatforms,
+      youtubeConfigured: readiness.youtube,
+      facebookPageId: env.META_FB_PAGE_ID || null,
+      instagramUserId: env.META_IG_USER_ID || null,
+      instagramTunnelMode: env.IG_PUBLIC_VIDEO_BASE_URL ? "static_url" : "ephemeral_cloudflared",
+    },
+    accounts: {
+      vpsLocalAgyEmail: localAgy.email,
+      vpsLocalAgyLog: localAgy.logFile,
+      vpsAgyProcessCount: Number((agyProcsRes.stdout || "0").trim()) || 0,
+      agyBridgeUrl: env.AGYBRIDGE_RENDER_URL || null,
+      standardModel: env.AI_STANDARD_MODEL || env.AGYBRIDGE_DEFAULT_MODEL || "gemini-2.5-flash",
+      premiumModel: env.AI_PREMIUM_MODEL || state.config?.agyModel || "gemini-4-hydrogen-high",
+    },
+    elevenLabs,
+    schedule: {
+      dailyPublishLimit: state.config?.dailyPublishLimit ?? 1,
+      publishWindowStartWib: `${String(state.config?.publishWindowStartHourLocal ?? 15).padStart(2, "0")}:00 WIB`,
+      primeTimeWib: `${String(state.config?.primeHourLocal ?? 19).padStart(2, "0")}:${String(
+        state.config?.primeMinuteLocal ?? 0
+      ).padStart(2, "0")} WIB`,
+      nextPrimeTimeISO,
+      canPublishNow: publishCheck,
+    },
+    stockSummary: {
+      ready: (state.stock || []).filter((s) => s.status === "ready").length,
+      published: combinedHistory.length,
+      failed: (state.stock || []).filter((s) => s.status === "failed").length,
+      queuedTopics: (state.topics || []).filter((t) => t.status === "queued").length,
+      producingTopics: (state.topics || []).filter((t) => t.status === "producing").length,
+      maxStock: state.config?.maxStock ?? 10,
+      resumeBelowStock: state.config?.resumeBelowStock ?? 5,
+      produceCheck,
+    },
+    config: state.config,
+    stock: state.stock || [],
+    topics: state.topics || [],
+    publishedHistory: combinedHistory,
+    lastTickAt: state.lastTickAt,
+    lastError: state.lastError,
+    automationLogTail,
+  };
+}
+
+async function handleAutomationAction(body) {
+  const env = getAutomationEnv();
+  const action = String(body?.action || "").trim();
+  const state = loadQueueState(AUTOMATION_STATE_FILE);
+
+  if (action === "add_topic") {
+    const topic = String(body.topic || "").trim();
+    if (!topic) throw new Error("Topik tidak boleh kosong.");
+    const res = enqueueTopic(state, { slug: body.slug || "", topic, rootDir: ROOT });
+    saveQueueState(AUTOMATION_STATE_FILE, state);
+    return { ok: true, action, result: res };
+  }
+
+  if (action === "scout") {
+    const count = Math.min(8, Math.max(1, Number(body.count || 3)));
+    const added = await scoutTopics({
+      rootDir: ROOT,
+      state,
+      env,
+      envFile: AUTOMATION_ENV_FILE,
+      count,
+    });
+    saveQueueState(AUTOMATION_STATE_FILE, state);
+    return { ok: true, action, addedCount: added.length, added };
+  }
+
+  if (action === "toggle_produce") {
+    state.config.autoProduceEnabled =
+      typeof body.enabled === "boolean" ? body.enabled : !state.config.autoProduceEnabled;
+    saveQueueState(AUTOMATION_STATE_FILE, state);
+    return { ok: true, action, autoProduceEnabled: state.config.autoProduceEnabled };
+  }
+
+  if (action === "toggle_publish") {
+    state.config.autoPublishEnabled =
+      typeof body.enabled === "boolean" ? body.enabled : !state.config.autoPublishEnabled;
+    saveQueueState(AUTOMATION_STATE_FILE, state);
+    return { ok: true, action, autoPublishEnabled: state.config.autoPublishEnabled };
+  }
+
+  if (action === "update_schedule") {
+    if (body.dailyPublishLimit !== undefined) {
+      state.config.dailyPublishLimit = Math.min(5, Math.max(1, Number(body.dailyPublishLimit) || 1));
+    }
+    if (body.primeHourLocal !== undefined) {
+      state.config.primeHourLocal = Math.min(23, Math.max(0, Number(body.primeHourLocal) || 19));
+    }
+    if (body.publishWindowStartHourLocal !== undefined) {
+      state.config.publishWindowStartHourLocal = Math.min(
+        23,
+        Math.max(0, Number(body.publishWindowStartHourLocal) || 15)
+      );
+    }
+    if (body.maxStock !== undefined) {
+      state.config.maxStock = Math.min(30, Math.max(2, Number(body.maxStock) || 10));
+    }
+    saveQueueState(AUTOMATION_STATE_FILE, state);
+    return { ok: true, action, config: state.config };
+  }
+
+  if (action === "publish_next") {
+    const res = await publishNextFromStock({
+      statePath: AUTOMATION_STATE_FILE,
+      env,
+      dryRun: body.dryRun !== false,
+      force: Boolean(body.force),
+    });
+    return { ok: res.ok, action, result: res };
+  }
+
+  throw new Error(`Action automation tidak dikenal: ${action}`);
+}
+
+async function handleDashboardChat(body) {
+  const message = String(body?.message || "").trim();
+  if (!message) throw new Error("Pesan chat tidak boleh kosong.");
+  const history = Array.isArray(body?.history) ? body.history.slice(-8) : [];
+
+  const env = getAutomationEnv();
+  const snap = await handleAutomationStatus();
+  const contextSummary = {
+    waktuUtc: snap.now,
+    renderSedangJalan: snap.renderActive,
+    pm2: snap.pm2,
+    kanalAktif: snap.platforms.activePlatforms,
+    facebookPageId: snap.platforms.facebookPageId,
+    instagramUserId: snap.platforms.instagramUserId,
+    akunVpsCli: snap.accounts.vpsLocalAgyEmail,
+    agyBridgeUrl: snap.accounts.agyBridgeUrl,
+    elevenLabsSisaKarakter: snap.elevenLabs.totalRemainingChars,
+    elevenLabsPerAkun: snap.elevenLabs.keys,
+    stok: snap.stockSummary,
+    daftarStokSiap: snap.stock.filter((s) => s.status === "ready").map((s) => ({ slug: s.slug, title: s.title })),
+    riwayatTayang: snap.publishedHistory.slice(-6),
+    antreanTopik: snap.topics.slice(0, 8).map((t) => ({ slug: t.slug, topic: t.topic, status: t.status })),
+    jadwal: snap.schedule,
+    autoProduce: snap.config?.autoProduceEnabled,
+    autoPublish: snap.config?.autoPublishEnabled,
+    lastTickAt: snap.lastTickAt,
+    lastError: snap.lastError,
+  };
+
+  const systemPrompt = [
+    'Kamu adalah asisten AI operasional untuk studio otomatis "Kok Iso Yo?" di VPS Ubuntu.',
+    "Jawab dalam Bahasa Indonesia yang ringkas, jujur, dan berbasis DATA LIVE di bawah ini (jangan mengarang angka atau status).",
+    "Jika user bertanya soal jumlah konten jadi, jadwal post, kanal aktif (YouTube/Facebook/Instagram), sisa kuota ElevenLabs, status render, atau error terbaru, gunakan langsung data snapshot berikut:",
+    JSON.stringify(contextSummary, null, 2),
+  ].join("\n\n");
+
+  const aiRouter = createAIRouter({ env, envFile: AUTOMATION_ENV_FILE });
+  const msgs = [
+    ...history
+      .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      .map((m) => ({ role: m.role, content: m.content.slice(0, 1200) })),
+    { role: "user", content: message.slice(0, 2000) },
+  ];
+
+  let res;
+  try {
+    res = await aiRouter.chatCompletion({
+      task: "post_copy",
+      model: env.AI_STANDARD_MODEL || env.AGYBRIDGE_DEFAULT_MODEL || "gemini-2.5-flash",
+      systemPrompt,
+      messages: msgs,
+      temperature: 0.4,
+    });
+  } catch {
+    res = await aiRouter.chatCompletion({
+      task: "creative_director",
+      model: env.AI_PREMIUM_MODEL || "gemini-4-hydrogen-high",
+      systemPrompt,
+      messages: msgs,
+      temperature: 0.4,
+    });
+  }
+
+  return {
+    ok: true,
+    reply: String(res?.content || "(tidak ada jawaban)").trim(),
+    model: res?.model || "unknown",
+    provider: res?.route?.provider || "unknown",
+    usage: res?.usage || null,
+  };
+}
+
 const server = http.createServer(async (req, res) => {
   setCorsHeaders(req, res);
   if (req.method === "OPTIONS") {
@@ -835,6 +1176,25 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === "/api/status" && req.method === "GET") {
       sendJson(res, 200, await handleStatus());
+      return;
+    }
+
+    if (pathname === "/api/automation/status" && req.method === "GET") {
+      sendJson(res, 200, await handleAutomationStatus());
+      return;
+    }
+
+    if (pathname === "/api/automation/action" && req.method === "POST") {
+      const raw = await readBodyBuffer(req, 512 * 1024);
+      const body = JSON.parse(raw.toString("utf8"));
+      sendJson(res, 200, await handleAutomationAction(body));
+      return;
+    }
+
+    if (pathname === "/api/chat" && req.method === "POST") {
+      const raw = await readBodyBuffer(req, 512 * 1024);
+      const body = JSON.parse(raw.toString("utf8"));
+      sendJson(res, 200, await handleDashboardChat(body));
       return;
     }
 

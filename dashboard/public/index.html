@@ -3,19 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kok Iso Yo? · Studio Control</title>
+  <title>Kok Iso Yo? · Automation Control &amp; AI Chat</title>
   <style>
     :root {
-      --bg: #0f1713;
-      --surface: #16211b;
-      --surface2: #1c2a22;
-      --border: #2c4034;
-      --text: #f3f1ea;
-      --muted: #9eb2a6;
-      --accent: #4c8c5a;
-      --gold: #e8d5ae;
-      --amber: #d97706;
-      --red: #dc2626;
+      --bg: #0c1310;
+      --surface: #131e19;
+      --surface2: #1a2922;
+      --border: #273c32;
+      --text: #f3f5f1;
+      --muted: #9ab0a4;
+      --accent: #38a169;
+      --accent-soft: #153526;
+      --gold: #f0c975;
+      --blue: #60a5fa;
+      --amber: #f59e0b;
+      --red: #ef4444;
     }
     * { box-sizing: border-box; }
     body {
@@ -28,27 +30,27 @@
     header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      padding: 14px 20px;
+      padding: 12px 18px;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
       position: sticky;
       top: 0;
       z-index: 20;
     }
-    .brand { display: flex; align-items: center; gap: 12px; }
-    .brand-bar { width: 5px; height: 28px; background: var(--gold); }
-    .brand h1 { margin: 0; font-size: 18px; letter-spacing: 0.3px; }
-    .brand small { display: block; color: var(--gold); font-size: 11px; font-family: monospace; letter-spacing: 1px; }
-    nav { display: flex; gap: 8px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-bar { width: 5px; height: 28px; background: var(--gold); border-radius: 3px; }
+    .brand h1 { margin: 0; font-size: 17px; letter-spacing: 0.3px; }
+    .brand small { display: block; color: var(--gold); font-size: 11px; font-family: monospace; }
+    nav { display: flex; gap: 6px; flex-wrap: wrap; }
     nav button {
       background: var(--surface2);
       color: var(--muted);
       border: 1px solid var(--border);
-      padding: 8px 14px;
-      border-radius: 4px;
+      padding: 7px 12px;
+      border-radius: 6px;
       cursor: pointer;
       font-weight: 600;
       font-size: 13px;
@@ -56,32 +58,52 @@
     nav button.active {
       background: var(--accent);
       color: #fff;
-      border-color: #6ab079;
+      border-color: #48bb78;
     }
-    main { max-width: 1220px; margin: 0 auto; padding: 20px; }
+    main { max-width: 1240px; margin: 0 auto; padding: 18px; }
     .tab { display: none; }
     .tab.active { display: block; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .kpi .k-lbl { font-size: 11px; font-family: monospace; color: var(--muted); text-transform: uppercase; }
+    .kpi .k-val { font-size: 26px; font-weight: 800; color: var(--gold); margin: 4px 0 2px; }
+    .kpi .k-sub { font-size: 12px; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 14px; margin-bottom: 14px; }
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 6px;
+      border-radius: 8px;
       padding: 16px;
+      margin-bottom: 14px;
     }
-    .card h3 { margin: 0 0 8px; font-size: 16px; color: var(--gold); }
-    .meta { font-family: monospace; font-size: 12px; color: var(--muted); margin-bottom: 12px; }
-    video.portrait {
-      width: 100%;
-      max-height: 460px;
-      background: #000;
-      border-radius: 4px;
+    .grid .card { margin-bottom: 0; }
+    .card h3 { margin: 0 0 10px; font-size: 15px; color: var(--gold); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .meta { font-family: monospace; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .pill {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-family: monospace;
+      font-size: 11px;
+      font-weight: 700;
       border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
     }
-    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .pill.ok { background: #14532d; color: #86efac; border-color: #22c55e; }
+    .pill.warn { background: #78350f; color: #fde68a; border-color: #f59e0b; }
+    .pill.err { background: #7f1d1d; color: #fecaca; border-color: #ef4444; }
+    .pill.info { background: #1e3a5f; color: #bfdbfe; border-color: #3b82f6; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
     .btn {
       display: inline-block;
-      padding: 8px 14px;
-      border-radius: 4px;
+      padding: 8px 13px;
+      border-radius: 6px;
       font-size: 13px;
       font-weight: 600;
       text-decoration: none;
@@ -90,74 +112,96 @@
       background: var(--surface2);
       color: var(--text);
     }
-    .btn.primary { background: var(--accent); border-color: #6ab079; color: #fff; }
+    .btn.primary { background: var(--accent); border-color: #48bb78; color: #fff; }
     .btn.warn { background: #7c2d12; border-color: var(--amber); color: #fed7aa; }
-    pre {
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    input, select, textarea {
+      width: 100%;
       background: #0b110e;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 9px 11px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    label { display: block; font-size: 11px; font-family: monospace; color: var(--gold); margin: 10px 0 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { font-family: monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; }
+    a { color: #7dd3fc; }
+    pre {
+      background: #080d0b;
       border: 1px solid var(--border);
       padding: 12px;
-      border-radius: 4px;
+      border-radius: 6px;
       overflow-x: auto;
       font-size: 12px;
       line-height: 1.45;
       color: #cfe3d5;
       max-height: 360px;
+      white-space: pre-wrap;
     }
-    label { display: block; font-size: 12px; font-family: monospace; color: var(--gold); margin: 12px 0 4px; }
-    input, select, textarea {
+    video.portrait {
       width: 100%;
-      background: #0d1410;
-      color: var(--text);
+      max-height: 440px;
+      background: #000;
+      border-radius: 6px;
       border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 9px 11px;
-      font-size: 14px;
-      font-family: inherit;
     }
-    textarea { min-height: 120px; resize: vertical; }
-    .pill {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 3px;
-      font-family: monospace;
-      font-size: 11px;
+    .status-msg { margin-top: 8px; font-size: 12px; font-family: monospace; color: #86efac; }
+    .err-msg { color: #fca5a5; }
+    /* Chatbot UI */
+    .chat-wrap { display: flex; flex-direction: column; height: calc(100vh - 170px); min-height: 460px; }
+    .chat-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .chip {
       background: var(--surface2);
       border: 1px solid var(--border);
       color: var(--gold);
+      border-radius: 999px;
+      padding: 5px 11px;
+      font-size: 12px;
+      cursor: pointer;
     }
-    .sheet-img { width: 100%; border-radius: 4px; border: 1px solid var(--border); cursor: zoom-in; }
+    .chat-box {
+      flex: 1;
+      overflow-y: auto;
+      background: #0a100d;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .msg { max-width: 85%; padding: 10px 13px; border-radius: 10px; font-size: 14px; white-space: pre-wrap; }
+    .msg.user { align-self: flex-end; background: #1e4d35; border: 1px solid #38a169; color: #fff; }
+    .msg.bot { align-self: flex-start; background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+    .msg .m-meta { font-size: 10px; font-family: monospace; color: var(--muted); margin-top: 5px; }
+    .chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
+    .chat-input-row input { flex: 1; }
     #pinGate {
-      position: fixed; inset: 0; background: rgba(10, 15, 12, 0.96);
+      position: fixed; inset: 0; background: rgba(8, 13, 10, 0.96);
       display: flex; align-items: center; justify-content: center; z-index: 100;
     }
     #pinGate.hidden { display: none; }
-    .pin-box { width: 340px; background: var(--surface); border: 1px solid var(--border); padding: 24px; border-radius: 6px; }
-    .status-msg { margin-top: 10px; font-size: 13px; color: #86efac; font-family: monospace; }
-    .err-msg { color: #fca5a5; }
-    .meter-row { margin-bottom: 12px; }
-    .meter-head { display: flex; justify-content: space-between; font-size: 12px; font-family: monospace; margin-bottom: 4px; }
-    .meter-track { height: 10px; background: #0c130f; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
-    .meter-fill { height: 100%; background: var(--accent); transition: width 0.25s ease; }
+    .pin-box { width: 340px; background: var(--surface); border: 1px solid var(--border); padding: 22px; border-radius: 8px; }
+    .meter-track { height: 9px; background: #09100c; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; margin-top: 4px; }
+    .meter-fill { height: 100%; background: var(--accent); }
     .meter-fill.warn { background: var(--amber); }
     .meter-fill.crit { background: var(--red); }
-    .badge-status { display: inline-block; padding: 4px 10px; border-radius: 4px; font-family: monospace; font-size: 12px; font-weight: 700; }
-    .badge-AMAN { background: #14532d; color: #86efac; border: 1px solid #22c55e; }
-    .badge-MENDEKATI_LIMIT { background: #78350f; color: #fde68a; border: 1px solid #f59e0b; }
-    .badge-LIMIT_TERCAPAI, .badge-DIPAUZE { background: #7f1d1d; color: #fecaca; border: 1px solid #ef4444; }
-    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    @media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <div id="pinGate" class="hidden">
     <div class="pin-box">
-      <h2 style="margin:0 0 8px; color:var(--gold)">Kok Iso Yo? Studio</h2>
-      <p style="margin:0 0 14px; font-size:13px; color:var(--muted)">Masukkan PIN Studio (dan URL API VPS jika dibuka dari Cloudflare Pages).</p>
-      <label style="margin-top:0">URL API VPS (kosongkan jika akses langsung)</label>
-      <input id="apiBaseInput" type="text" placeholder="https://api.domainkamu.com" style="margin-bottom:10px" />
+      <h2 style="margin:0 0 8px; color:var(--gold)">Kok Iso Yo? Automation</h2>
+      <p style="margin:0 0 12px; font-size:13px; color:var(--muted)">Masukkan PIN Studio untuk pantau otomasi &amp; chat dengan VPS.</p>
+      <label style="margin-top:0">URL API VPS (kosongkan jika buka langsung)</label>
+      <input id="apiBaseInput" type="text" placeholder="https://xxx.trycloudflare.com" style="margin-bottom:8px" />
       <label>PIN Studio</label>
       <input id="pinInput" type="password" placeholder="PIN Studio" />
-      <button class="btn primary" style="width:100%; margin-top:12px" onclick="submitPin()">Masuk Studio</button>
+      <button class="btn primary" style="width:100%; margin-top:12px" onclick="submitPin()">Masuk Dashboard</button>
       <div id="pinErr" class="status-msg err-msg"></div>
     </div>
   </div>
@@ -166,286 +210,161 @@
     <div class="brand">
       <div class="brand-bar"></div>
       <div>
-        <h1>KOK ISO YO? · STUDIO CONTROL</h1>
-        <small id="hdrMeta">JALUR 3C DOCUMENTARY ENGINE · LOADING...</small>
+        <h1>KOK ISO YO? · AUTOMATION HUB</h1>
+        <small id="hdrMeta">MEMUAT STATUS VPS...</small>
       </div>
     </div>
     <nav>
-      <button class="active" onclick="switchTab('videos', this)">Video &amp; Download</button>
-      <button onclick="switchTab('monitor', this)">Live tmux &amp; Log</button>
-      <button onclick="switchTab('qa', this)">QA Sheets &amp; Naskah</button>
-      <button onclick="switchTab('prompt', this)">Prompt &amp; Upload Audio</button>
-      <button onclick="switchTab('jobs', this)">Render &amp; Revisi</button>
-      <button onclick="switchTab('quota', this); loadQuota()">Kuota &amp; Limit AI</button>
-      <button onclick="openSettings()" title="Atur URL API VPS & PIN">⚙ API / PIN</button>
+      <button class="active" onclick="switchTab('automation', this); loadAutomation()">Automation &amp; Jadwal</button>
+      <button onclick="switchTab('chat', this)">Chatbot AI VPS</button>
+      <button onclick="switchTab('videos', this); loadEpisodes()">Video &amp; Download</button>
+      <button onclick="switchTab('monitor', this); loadStatus(); loadAutomation()">Server &amp; Log</button>
+      <button onclick="openSettings()" title="Atur PIN / API URL">⚙ PIN</button>
     </nav>
   </header>
 
   <main>
-    <!-- TAB 1: VIDEOS -->
-    <section id="tab-videos" class="tab active">
+    <!-- TAB 1: AUTOMATION & SCHEDULE -->
+    <section id="tab-automation" class="tab active">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="k-lbl">Stok Siap Post</div>
+          <div class="k-val" id="kpiReady">-</div>
+          <div class="k-sub" id="kpiReadySub">Target stok max 10</div>
+        </div>
+        <div class="kpi">
+          <div class="k-lbl">Sudah Diposting</div>
+          <div class="k-val" id="kpiPublished">-</div>
+          <div class="k-sub" id="kpiNextSlot">Slot berikutnya: -</div>
+        </div>
+        <div class="kpi">
+          <div class="k-lbl">Antrean Topik</div>
+          <div class="k-val" id="kpiTopics">-</div>
+          <div class="k-sub" id="kpiRenderState">Render: -</div>
+        </div>
+        <div class="kpi">
+          <div class="k-lbl">Sisa ElevenLabs</div>
+          <div class="k-val" id="kpiElChars">-</div>
+          <div class="k-sub" id="kpiElSub">Estimasi ~0 video</div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3>
+            Kanal Post &amp; Jadwal Harian
+            <button class="btn" style="padding:4px 10px; font-size:12px" onclick="loadAutomation()">Refresh</button>
+          </h3>
+          <div id="channelsRow" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px"></div>
+          <div id="scheduleBox" class="meta"></div>
+          <div class="btn-row">
+            <button id="btnToggleProduce" class="btn" onclick="autoAction('toggle_produce')">Toggle Auto-Produce</button>
+            <button id="btnTogglePublish" class="btn" onclick="autoAction('toggle_publish')">Toggle Auto-Publish</button>
+            <button class="btn" onclick="autoAction('publish_next', { dryRun: true, force: true })">Tes Publish (Dry-Run)</button>
+            <button class="btn warn" onclick="confirmLivePublish()">Publish 1 Stok Sekarang</button>
+          </div>
+          <div id="autoActionMsg" class="status-msg"></div>
+        </div>
+
+        <div class="card">
+          <h3>Status Akun AI &amp; Kuota ElevenLabs</h3>
+          <div id="accountsBox" class="meta"></div>
+          <div id="elKeysBox" style="margin-top:8px"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Tambah Topik Baru / Cari Ide Otomatis</h3>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <input id="newTopicInput" style="flex:1; min-width:240px" placeholder="Contoh: Kenapa rel kereta api diberi celah dan batu kerikil?" />
+          <button class="btn primary" onclick="addNewTopic()">+ Tambah ke Antrean</button>
+          <button class="btn" onclick="autoAction('scout', { count: 3 })">AI Cari 3 Topik Baru</button>
+        </div>
+        <div id="topicActionMsg" class="status-msg"></div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3>Stok Video Siap Tayang</h3>
+          <div id="stockTableWrap" class="meta">Memuat...</div>
+        </div>
+        <div class="card">
+          <h3>Riwayat Postingan &amp; Jadwal Tayang</h3>
+          <div id="historyTableWrap" class="meta">Memuat...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Antrean Topik Produksi</h3>
+        <div id="topicsTableWrap" class="meta">Memuat...</div>
+      </div>
+    </section>
+
+    <!-- TAB 2: CHATBOT AI VPS -->
+    <section id="tab-chat" class="tab">
+      <div class="card chat-wrap">
+        <h3>
+          Chatbot AI Operasional VPS (Tanpa Login SSH)
+          <span class="pill info" id="chatModelPill">AGYBridge · gemini-2.5-flash</span>
+        </h3>
+        <div class="chat-chips">
+          <span class="chip" onclick="quickAsk('Sekarang proses produksi lagi ngerjain apa, render jalan nggak?')">Status produksi sekarang?</span>
+          <span class="chip" onclick="quickAsk('Konten sudah jadi berapa, jadwal post berikutnya jam berapa, dan kanal mana saja yang aktif?')">Stok &amp; jadwal post?</span>
+          <span class="chip" onclick="quickAsk('Sisa karakter ElevenLabs sekarang berapa dan cukup untuk berapa video lagi?')">Sisa kuota ElevenLabs?</span>
+          <span class="chip" onclick="quickAsk('Apakah ada error terbaru di daemon automation VPS?')">Cek error terbaru</span>
+          <span class="chip" onclick="quickAsk('Berikan 5 ide topik sains/teknik 3D realistis yang viral untuk episode berikutnya')">Cari ide topik viral</span>
+        </div>
+        <div id="chatBox" class="chat-box">
+          <div class="msg bot">
+            Halo! Saya asisten operasional <b>Kok Iso Yo?</b> yang langsung terhubung ke data live VPS Anda. Tanyakan status produksi, jadwal post, sisa stok video, kuota ElevenLabs, atau ide konten tanpa perlu login VPS.
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <input id="chatInput" placeholder="Tulis pertanyaan ke asisten VPS..." onkeydown="if(event.key==='Enter') sendChat()" />
+          <button id="chatSendBtn" class="btn primary" onclick="sendChat()">Kirim</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: VIDEOS -->
+    <section id="tab-videos" class="tab">
       <div id="videoGrid" class="grid">Memuat daftar video...</div>
     </section>
 
-    <!-- TAB 2: MONITOR -->
+    <!-- TAB 4: SERVER & LOGS -->
     <section id="tab-monitor" class="tab">
       <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px">
-          <h3>Status Server &amp; Sesi tmux</h3>
-          <button class="btn" onclick="loadStatus()">Refresh Sekarang</button>
-        </div>
+        <h3>
+          Status PM2 &amp; Log Daemon Automation
+          <button class="btn" style="padding:4px 10px; font-size:12px" onclick="loadAutomation(); loadStatus()">Refresh</button>
+        </h3>
+        <div id="pm2Box" class="meta"></div>
         <div id="monitorMeta" class="meta"></div>
-        <div id="tmuxPanes"></div>
-        <h3 style="margin-top:18px">Tail Log Produksi (`logs/episode002_production.log`)</h3>
-        <pre id="prodLogTail">Memuat log...</pre>
-      </div>
-    </section>
-
-    <!-- TAB 3: QA SHEETS & DOCS -->
-    <section id="tab-qa" class="tab">
-      <div class="card" style="margin-bottom:16px">
-        <h3>Dokumen Storyboard, Transkrip &amp; Cek Fakta</h3>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px" id="docButtons"></div>
-        <pre id="docViewer">Pilih dokumen di atas untuk membaca isi markdown.</pre>
-      </div>
-      <div id="sheetGrid" class="grid"></div>
-    </section>
-
-    <!-- TAB 4: PROMPT & AUDIO UPLOAD -->
-    <section id="tab-prompt" class="tab">
-      <div class="grid">
-        <div class="card">
-          <h3>1. Buat / Simpan Brief &amp; Prompt Episode</h3>
-          <label>ID / Slug Project (contoh: episode006_orangutan)</label>
-          <input id="projSlug" placeholder="episode006_topik_baru" />
-          <label>Judul Episode</label>
-          <input id="projTitle" placeholder="Contoh: Dilema Konservasi ..." />
-          <label>Gaya Visual</label>
-          <select id="projStyle">
-            <option>Jalur 3C (StageDoc3D PBR + Editorial 2D)</option>
-            <option>2D Editorial Cartography &amp; Data</option>
-            <option>Stage25D Stylized</option>
-          </select>
-          <label>Prompt / Naskah / Arahan Visual</label>
-          <textarea id="projPrompt" placeholder="Tulis topik, fakta terverifikasi, arahan visual, atau naskah VO..."></textarea>
-          <label>Catatan Tambahan</label>
-          <input id="projNotes" placeholder="Misal: 9:16 30fps, target 90 detik, sitasi wajib..." />
-          <div class="btn-row">
-            <button class="btn primary" onclick="saveProject()">Simpan Brief &amp; Prompt</button>
-          </div>
-          <div id="projStatus" class="status-msg"></div>
-        </div>
-
-        <div class="card">
-          <h3>2. Upload Voice-Over Audio (.mp3 / .wav / .m4a)</h3>
-          <label>Target Project Slug</label>
-          <input id="audioSlug" placeholder="episode006_topik_baru" />
-          <label>Pilih File Audio (Max 80 MB)</label>
-          <input id="audioFile" type="file" accept=".mp3,.wav,.m4a,audio/*" />
-          <div class="btn-row">
-            <button class="btn primary" onclick="uploadAudio()">Upload &amp; Analisis Jeda (ffprobe)</button>
-          </div>
-          <div id="audioStatus" class="status-msg"></div>
-          <pre id="audioAnalysis" style="margin-top:12px">Belum ada analisis audio baru.</pre>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:16px">
-        <h3>Daftar Project &amp; Audio Tersimpan</h3>
-        <div id="projectList" class="grid"></div>
-      </div>
-    </section>
-
-    <!-- TAB 5: RENDER & REVISION -->
-    <section id="tab-jobs" class="tab">
-      <div class="grid">
-        <div class="card">
-          <h3>Jalankan Render / Patch di tmux</h3>
-          <label>Komposisi Target</label>
-          <select id="jobComp"></select>
-          <label>Mode Eksekusi</label>
-          <select id="jobMode" onchange="toggleJobInputs()">
-            <option value="stills">Render QA Stills + Contact Sheet (Cepat)</option>
-            <option value="patch">Patch Range Frame Tertentu (--frames=start-end)</option>
-            <option value="render">Render Video Penuh + short_qa.py</option>
-          </select>
-          <div id="framesWrap">
-            <label id="framesLbl">Daftar Frame (koma: 30,120,300 atau range: 176-593)</label>
-            <input id="jobFrames" placeholder="30,120,300" />
-          </div>
-          <div class="btn-row">
-            <button class="btn warn" onclick="triggerJob()">Jalankan di tmux Terpisah</button>
-          </div>
-          <div id="jobStatus" class="status-msg"></div>
-        </div>
-
-        <div class="card">
-          <h3>Catat Permintaan Revisi Video</h3>
-          <label>Episode</label>
-          <input id="revEp" placeholder="Episode 003 / Ep002BadakJawa" />
-          <label>Timestamp / Frame</label>
-          <input id="revTs" placeholder="00:42 atau f1260" />
-          <label>Deskripsi Revisi</label>
-          <textarea id="revNotes" placeholder="Contoh: Perbaiki teks di E3_S09, ganti pose badak di f1341, sesuaikan VO..."></textarea>
-          <div class="btn-row">
-            <button class="btn primary" onclick="submitRevision()">Simpan Catatan Revisi</button>
-          </div>
-          <div id="revStatus" class="status-msg"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 6: AI QUOTA & LIMITS -->
-    <section id="tab-quota" class="tab">
-      <div class="card" style="margin-bottom:16px">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px">
-          <div>
-            <h3 style="margin-bottom:4px">Status Kuota AI &amp; Guardrail VPS</h3>
-            <div id="quotaSubtitle" class="meta" style="margin:0">Memuat kuota...</div>
-          </div>
-          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
-            <span id="quotaStatusBadge" class="badge-status badge-AMAN">AMAN</span>
-            <button id="pauseBtn" class="btn warn" onclick="toggleQuotaPause()">Pause Semua Render</button>
-            <button class="btn" onclick="loadQuota(true)">Refresh &amp; Cek Model AI</button>
-          </div>
-        </div>
-        <div id="quotaAlerts" style="margin-top:10px; font-size:13px; font-family:monospace"></div>
-        <div id="quotaMeters" style="margin-top:14px"></div>
-      </div>
-
-      <div class="grid" style="margin-bottom:16px">
-        <div class="card">
-          <h3>Atur Batas Kuota &amp; Model Default</h3>
-          <label>Model AI Default (dari `agy models`)</label>
-          <select id="qDefaultModel"></select>
-          <div class="two-col">
-            <div>
-              <label>Limit Task AI / Hari</label>
-              <input id="qAiTasksLimit" type="number" min="1" />
-            </div>
-            <div>
-              <label>Limit Render Job / Hari</label>
-              <input id="qRenderJobsLimit" type="number" min="1" />
-            </div>
-            <div>
-              <label>Limit Token AI / Bulan</label>
-              <input id="qTokensLimit" type="number" min="1000" step="10000" />
-            </div>
-            <div>
-              <label>Limit TTS Karakter / Bulan</label>
-              <input id="qTtsLimit" type="number" min="100" step="5000" />
-            </div>
-            <div>
-              <label>Budget Bulanan (USD)</label>
-              <input id="qBudgetLimit" type="number" min="0" step="1" />
-            </div>
-            <div>
-              <label>Threshold Peringatan (%)</label>
-              <input id="qWarnPct" type="number" min="10" max="99" />
-            </div>
-            <div>
-              <label>Max Concurrent Render (4 vCPU)</label>
-              <input id="qMaxConc" type="number" min="1" max="4" />
-            </div>
-            <div>
-              <label>Batas Guardrail RAM VPS (%)</label>
-              <input id="qMaxRam" type="number" min="30" max="98" />
-            </div>
-          </div>
-          <label>Proteksi Otomatis Saat Kuota Penuh</label>
-          <select id="qAutoBlock">
-            <option value="true">Aktif — Blokir render baru saat kuota harian/token >= 100%</option>
-            <option value="false">Peringatan saja — Jangan blokir job render</option>
-          </select>
-          <div class="btn-row">
-            <button class="btn primary" onclick="saveQuotaConfig()">Simpan Limit &amp; Model</button>
-            <button class="btn" onclick="resetQuotaCounter('reset_daily')">Reset Harian</button>
-            <button class="btn" onclick="resetQuotaCounter('reset_monthly')">Reset Bulanan</button>
-          </div>
-          <div id="quotaSaveStatus" class="status-msg"></div>
-        </div>
-
-        <div class="card">
-          <h3>Catat Pemakaian / Sinkron Kuota Manual</h3>
-          <div class="two-col">
-            <div>
-              <label>Tambah Task AI</label>
-              <input id="recTasks" type="number" min="0" value="1" />
-            </div>
-            <div>
-              <label>Tambah Token AI</label>
-              <input id="recTokens" type="number" min="0" step="1000" value="15000" />
-            </div>
-            <div>
-              <label>Tambah Karakter TTS</label>
-              <input id="recTts" type="number" min="0" step="500" value="0" />
-            </div>
-            <div>
-              <label>Tambah Estimasi USD</label>
-              <input id="recUsd" type="number" min="0" step="0.05" value="0" />
-            </div>
-          </div>
-          <label>Catatan Pemakaian</label>
-          <input id="recNote" placeholder="Misal: Riset Ep 006 / Generate audio ElevenLabs" />
-          <div class="btn-row">
-            <button class="btn primary" onclick="recordQuotaUsage()">+ Catat Pemakaian</button>
-          </div>
-          <div id="recStatus" class="status-msg"></div>
-
-          <h3 style="margin-top:20px">Slot Kuota Eksternal (Antigravity / TTS / VPS)</h3>
-          <div id="providerCards"></div>
-          <div class="btn-row">
-            <button class="btn" onclick="saveProviders()">Simpan Sisa Kuota Provider</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>Riwayat Ledger Pemakaian AI &amp; Render</h3>
-        <pre id="quotaHistory">Belum ada catatan.</pre>
+        <pre id="automationLogPre">Memuat log kokisoyo-automation...</pre>
       </div>
     </section>
   </main>
 
   <script>
-    const qsParams = new URLSearchParams(window.location.search);
-    if (qsParams.get("api")) {
-      localStorage.setItem("kokisoyo_api_base", qsParams.get("api").replace(/\/+$/, ""));
-    }
-    let API_BASE = localStorage.getItem("kokisoyo_api_base") || "";
-    let PIN = localStorage.getItem("kokisoyo_pin") || "";
+    const LS_PIN = "kokisoyo_studio_pin";
+    const LS_API = "kokisoyo_studio_api_base";
+    let PIN = localStorage.getItem(LS_PIN) || "";
+    let API_BASE = (localStorage.getItem(LS_API) || "").replace(/\/+$/, "");
+    let chatHistory = [];
 
-    function authHeaders(extra = {}) {
-      return PIN ? { ...extra, "x-studio-pin": PIN } : extra;
+    function apiUrl(p) { return (API_BASE || "") + p; }
+    function esc(s) {
+      return String(s ?? "").replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
     }
-
-    function apiUrl(path) {
-      return `${API_BASE}${path}`;
-    }
-
-    function withPin(url) {
-      const full = apiUrl(url);
-      if (!PIN) return full;
-      const sep = full.includes("?") ? "&" : "?";
-      return `${full}${sep}pin=${encodeURIComponent(PIN)}`;
-    }
-
-    async function api(url, opts = {}) {
-      const host = window.location.hostname;
-      const isHosted = host.endsWith("pages.dev") || host.endsWith("workers.dev");
-      if (!API_BASE && isHosted) {
+    async function apiFetch(p, opts = {}) {
+      const headers = Object.assign({}, opts.headers || {});
+      if (PIN) headers["x-studio-pin"] = PIN;
+      const r = await fetch(apiUrl(p), Object.assign({}, opts, { headers }));
+      if (r.status === 401) {
         document.getElementById("pinGate").classList.remove("hidden");
-        throw new Error("API Base URL required");
+        throw new Error("PIN salah atau diperlukan.");
       }
-      const r = await fetch(apiUrl(url), { ...opts, headers: authHeaders(opts.headers || {}) });
-      if (r.status === 401 || (r.status === 404 && !API_BASE)) {
-        document.getElementById("apiBaseInput").value = API_BASE;
-        document.getElementById("pinGate").classList.remove("hidden");
-        throw new Error("Unauthorized");
-      }
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "API error");
-      return data;
+      return r;
     }
 
     function openSettings() {
@@ -456,17 +375,21 @@
     }
 
     async function submitPin() {
-      API_BASE = document.getElementById("apiBaseInput").value.trim().replace(/\/+$/, "");
-      localStorage.setItem("kokisoyo_api_base", API_BASE);
-      PIN = document.getElementById("pinInput").value.trim();
+      const pin = document.getElementById("pinInput").value.trim();
+      const base = document.getElementById("apiBaseInput").value.trim().replace(/\/+$/, "");
+      API_BASE = base; PIN = pin;
       try {
-        await api("/api/auth-check");
-        localStorage.setItem("kokisoyo_pin", PIN);
+        const r = await fetch(apiUrl("/api/auth-check"), { headers: { "x-studio-pin": pin } });
+        if (!r.ok) {
+          document.getElementById("pinErr").textContent = "PIN salah atau API tidak terjangkau.";
+          return;
+        }
+        localStorage.setItem(LS_PIN, pin);
+        localStorage.setItem(LS_API, base);
         document.getElementById("pinGate").classList.add("hidden");
-        document.getElementById("pinErr").textContent = "";
-        initAll();
-      } catch {
-        document.getElementById("pinErr").textContent = "Gagal terhubung atau PIN salah.";
+        await loadAutomation();
+      } catch (e) {
+        document.getElementById("pinErr").textContent = e.message;
       }
     }
 
@@ -474,388 +397,229 @@
       document.querySelectorAll(".tab").forEach((el) => el.classList.remove("active"));
       document.querySelectorAll("nav button").forEach((el) => el.classList.remove("active"));
       document.getElementById("tab-" + name).classList.add("active");
-      btn.classList.add("active");
+      if (btn) btn.classList.add("active");
+    }
+
+    async function loadAutomation() {
+      try {
+        const r = await apiFetch("/api/automation/status");
+        const d = await r.json();
+        document.getElementById("hdrMeta").textContent =
+          `STOK: ${d.stockSummary.ready}/${d.stockSummary.maxStock} · TAYANG: ${d.stockSummary.published} · RENDER: ${d.renderActive ? "AKTIF" : "IDLE"} · KANAL: ${d.platforms.activePlatforms.join(", ").toUpperCase()}`;
+
+        document.getElementById("kpiReady").textContent = `${d.stockSummary.ready} / ${d.stockSummary.maxStock}`;
+        document.getElementById("kpiReadySub").textContent = d.stockSummary.produceCheck?.reason || "-";
+        document.getElementById("kpiPublished").textContent = String(d.stockSummary.published);
+        document.getElementById("kpiNextSlot").textContent = `Prime time: ${d.schedule.primeTimeWib} (upload >= ${d.schedule.publishWindowStartWib})`;
+        document.getElementById("kpiTopics").textContent = `${d.stockSummary.queuedTopics} antri`;
+        document.getElementById("kpiRenderState").textContent = d.renderActive
+          ? "Sedang render/produksi aktif"
+          : `Idle · terakhir tick ${d.lastTickAt ? d.lastTickAt.slice(11, 16) + " UTC" : "-"}`;
+
+        const chars = d.elevenLabs?.totalRemainingChars || 0;
+        document.getElementById("kpiElChars").textContent = chars.toLocaleString("id-ID");
+        document.getElementById("kpiElSub").textContent = `Estimasi cukup ~${Math.floor(chars / 1250)} video lagi`;
+
+        const pr = d.platforms.readiness;
+        document.getElementById("channelsRow").innerHTML = [
+          `<span class="pill ${pr.youtube ? "ok" : "err"}">YouTube Shorts: ${pr.youtube ? "AKTIF (5-Step SOP)" : "OFF"}</span>`,
+          `<span class="pill ${pr.facebook ? "ok" : "err"}">Facebook Reels: ${pr.facebook ? "AKTIF (Page " + esc(d.platforms.facebookPageId) + ")" : "OFF"}</span>`,
+          `<span class="pill ${pr.instagram ? "ok" : "err"}">Instagram Reels: ${pr.instagram ? "AKTIF (@kokisoyo.id · " + esc(d.platforms.instagramTunnelMode) + ")" : "OFF"}</span>`,
+        ].join("");
+
+        document.getElementById("scheduleBox").innerHTML = `
+          <div>Auto-Produce: <b style="color:${d.config.autoProduceEnabled ? "#86efac" : "#fca5a5"}">${d.config.autoProduceEnabled ? "ON" : "PAUSED"}</b> ·
+               Auto-Publish: <b style="color:${d.config.autoPublishEnabled ? "#86efac" : "#fca5a5"}">${d.config.autoPublishEnabled ? "ON" : "PAUSED"}</b> ·
+               Limit Post: <b>${d.schedule.dailyPublishLimit} video/hari</b></div>
+          <div>Slot Berikutnya: <b>${esc(d.schedule.nextPrimeTimeISO)}</b> · Status jendela post: <code>${esc(d.schedule.canPublishNow?.reason || "SIAP PUBLISH")}</code></div>
+          ${d.lastError ? `<div class="err-msg">Last error: ${esc(d.lastError)}</div>` : ""}
+        `;
+
+        document.getElementById("btnToggleProduce").textContent = d.config.autoProduceEnabled ? "Pause Auto-Produce" : "Resume Auto-Produce";
+        document.getElementById("btnTogglePublish").textContent = d.config.autoPublishEnabled ? "Pause Auto-Publish" : "Resume Auto-Publish";
+
+        document.getElementById("accountsBox").innerHTML = `
+          <div><b>VPS Local CLI (PREMIUM):</b> <code>${esc(d.accounts.vpsLocalAgyEmail)}</code> (model: <code>${esc(d.accounts.premiumModel)}</code>, proses agy: ${d.accounts.vpsAgyProcessCount})</div>
+          <div><b>AGYBridge (STANDARD):</b> <code>${esc(d.accounts.agyBridgeUrl || "-")}</code> (model: <code>${esc(d.accounts.standardModel)}</code>)</div>
+        `;
+
+        const keys = d.elevenLabs?.keys || [];
+        document.getElementById("elKeysBox").innerHTML = keys.length
+          ? keys.map((k) => {
+              const pct = k.limitChars ? Math.min(100, Math.round((k.usedChars / k.limitChars) * 100)) : 100;
+              const cls = pct >= 90 ? "crit" : pct >= 70 ? "warn" : "";
+              return `<div style="margin-bottom:8px">
+                <div style="display:flex; justify-content:space-between; font-size:12px; font-family:monospace">
+                  <span>Akun #${k.index + 1} (${esc(k.keyMask)})</span>
+                  <span>sisa <b>${(k.remainingChars || 0).toLocaleString("id-ID")}</b> / ${(k.limitChars || 0).toLocaleString("id-ID")}</span>
+                </div>
+                <div class="meter-track"><div class="meter-fill ${cls}" style="width:${pct}%"></div></div>
+              </div>`;
+            }).join("")
+          : '<div class="meta">Belum ada key ElevenLabs terbaca.</div>';
+
+        const readyItems = (d.stock || []).filter((s) => s.status === "ready");
+        document.getElementById("stockTableWrap").innerHTML = readyItems.length
+          ? `<table><thead><tr><th>Slug</th><th>Judul</th><th>Status</th></tr></thead><tbody>${readyItems
+              .map((s) => `<tr><td><code>${esc(s.slug)}</code></td><td>${esc(s.title)}</td><td><span class="pill ok">${esc(s.status)}</span></td></tr>`)
+              .join("")}</tbody></table>`
+          : "Belum ada video di gudang stok (sedang diproduksi otomatis).";
+
+        const hist = d.publishedHistory || [];
+        document.getElementById("historyTableWrap").innerHTML = hist.length
+          ? `<table><thead><tr><th>Episode</th><th>Kanal</th><th>Jadwal / Link</th></tr></thead><tbody>${hist
+              .slice()
+              .reverse()
+              .map(
+                (h) => `<tr>
+                  <td><b>${esc(h.slug)}</b><br><span class="meta">${esc((h.title || "").slice(0, 60))}</span></td>
+                  <td>${esc((h.platforms || ["youtube"]).join(", "))}</td>
+                  <td>${esc(h.publishAt || h.publishedAt || "-")}${h.youtubeUrl ? `<br><a href="${esc(h.youtubeUrl)}" target="_blank">Buka Shorts ↗</a>` : ""}</td>
+                </tr>`
+              )
+              .join("")}</tbody></table>`
+          : "Belum ada riwayat publish.";
+
+        const topics = d.topics || [];
+        document.getElementById("topicsTableWrap").innerHTML = topics.length
+          ? `<table><thead><tr><th>Slug</th><th>Topik</th><th>Status</th></tr></thead><tbody>${topics
+              .map((t) => {
+                const cls = t.status === "done" ? "ok" : t.status === "producing" ? "info" : t.status === "failed" ? "err" : "warn";
+                return `<tr><td><code>${esc(t.slug)}</code></td><td>${esc(t.topic)}${t.error ? `<div class="err-msg">${esc(t.error)}</div>` : ""}</td><td><span class="pill ${cls}">${esc(t.status)}</span></td></tr>`;
+              })
+              .join("")}</tbody></table>`
+          : "Antrean topik kosong (daemon akan otomatis scout topik baru).";
+
+        document.getElementById("pm2Box").innerHTML = (d.pm2 || [])
+          .map((p) => `<span class="pill ${p.status === "online" ? "ok" : "err"}" style="margin-right:6px">${esc(p.name)}: ${esc(p.status)} (${p.memoryMb}MB)</span>`)
+          .join("");
+        document.getElementById("automationLogPre").textContent = d.automationLogTail || "-";
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function autoAction(action, extra = {}) {
+      const msgEl = action === "add_topic" || action === "scout" ? document.getElementById("topicActionMsg") : document.getElementById("autoActionMsg");
+      msgEl.className = "status-msg";
+      msgEl.textContent = "Memproses " + action + "...";
+      try {
+        const r = await apiFetch("/api/automation/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(Object.assign({ action }, extra)),
+        });
+        const d = await r.json();
+        if (!r.ok || d.error) throw new Error(d.error || "Gagal.");
+        msgEl.textContent = "OK: " + JSON.stringify(d).slice(0, 260);
+        await loadAutomation();
+      } catch (e) {
+        msgEl.className = "status-msg err-msg";
+        msgEl.textContent = "Error: " + e.message;
+      }
+    }
+
+    function addNewTopic() {
+      const inp = document.getElementById("newTopicInput");
+      const topic = inp.value.trim();
+      if (!topic) return;
+      autoAction("add_topic", { topic }).then(() => { inp.value = ""; });
+    }
+
+    function confirmLivePublish() {
+      if (!confirm("Upload & jadwalkan 1 video stok sekarang ke YouTube/FB/IG?")) return;
+      autoAction("publish_next", { dryRun: false, force: true });
+    }
+
+    function appendChatMsg(role, text, meta = "") {
+      const box = document.getElementById("chatBox");
+      const div = document.createElement("div");
+      div.className = "msg " + (role === "user" ? "user" : "bot");
+      div.innerHTML = esc(text) + (meta ? `<div class="m-meta">${esc(meta)}</div>` : "");
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+      return div;
+    }
+
+    function quickAsk(q) {
+      document.getElementById("chatInput").value = q;
+      sendChat();
+    }
+
+    async function sendChat() {
+      const inp = document.getElementById("chatInput");
+      const btn = document.getElementById("chatSendBtn");
+      const text = inp.value.trim();
+      if (!text) return;
+      inp.value = "";
+      appendChatMsg("user", text);
+      const thinking = appendChatMsg("bot", "Membaca data live VPS & menyiapkan jawaban...");
+      btn.disabled = true;
+      try {
+        const r = await apiFetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text, history: chatHistory }),
+        });
+        const d = await r.json();
+        if (!r.ok || d.error) throw new Error(d.error || "Gagal memanggil chatbot.");
+        thinking.remove();
+        appendChatMsg("bot", d.reply, `${d.provider} · ${d.model}${d.usage?.totalTokens ? " · " + d.usage.totalTokens + " tok" : ""}`);
+        document.getElementById("chatModelPill").textContent = `${d.provider} · ${d.model}`;
+        chatHistory.push({ role: "user", content: text }, { role: "assistant", content: d.reply });
+        if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
+      } catch (e) {
+        thinking.remove();
+        appendChatMsg("bot", "Error: " + e.message);
+      } finally {
+        btn.disabled = false;
+      }
     }
 
     async function loadEpisodes() {
-      const data = await api("/api/episodes");
-      const vg = document.getElementById("videoGrid");
-      vg.innerHTML = data.episodes.map((ep) => {
-        const mb = (ep.sizeBytes / 1048576).toFixed(1);
-        const dur = ep.durationSec ? ep.durationSec.toFixed(2) + " dtk" : "-";
-        const vUrl = withPin(`/api/media/video?path=${encodeURIComponent(ep.relPath)}`);
-        const dUrl = withPin(`/api/media/video?path=${encodeURIComponent(ep.relPath)}&download=1`);
-        return `
-          <div class="card">
-            <h3>${ep.id}</h3>
-            <div class="meta">
-              ${mb} MB · ${dur} · ${ep.resolution || "-"} · ${ep.frames || "-"}f · ${ep.audio}
-            </div>
-            <video class="portrait" controls preload="metadata" src="${vUrl}"></video>
-            <div class="btn-row">
-              <a class="btn primary" href="${dUrl}" download>Download MP4</a>
-              <span class="pill">${new Date(ep.mtime).toLocaleString()}</span>
-            </div>
-            ${ep.qaSummary ? `<pre style="margin-top:10px; max-height:140px">${ep.qaSummary}</pre>` : ""}
-          </div>
-        `;
-      }).join("") || "<p>Belum ada file MP4 di folder out/.</p>";
-
-      const sel = document.getElementById("jobComp");
-      sel.innerHTML = Object.entries(data.compositions)
-        .map(([id, c]) => `<option value="${id}">${id} — ${c.label}</option>`)
-        .join("");
-
-      const db = document.getElementById("docButtons");
-      db.innerHTML = data.docs
-        .map((d) => `<button class="btn" onclick="viewDoc('${d.name}')">${d.name.replace("badak_jawa_series/", "")}</button>`)
-        .join("");
-
-      const sg = document.getElementById("sheetGrid");
-      sg.innerHTML = data.sheets.map((s) => {
-        const iUrl = withPin(`/api/media/image?path=${encodeURIComponent(s.name)}`);
-        return `
-          <div class="card">
-            <h3>${s.name}</h3>
-            <a href="${iUrl}" target="_blank"><img class="sheet-img" src="${iUrl}" loading="lazy" /></a>
-          </div>
-        `;
-      }).join("");
-    }
-
-    async function viewDoc(name) {
-      const r = await fetch(withPin(`/api/docs?path=${encodeURIComponent(name)}`), { headers: authHeaders() });
-      document.getElementById("docViewer").textContent = await r.text();
+      const grid = document.getElementById("videoGrid");
+      try {
+        const r = await apiFetch("/api/episodes");
+        const d = await r.json();
+        const vids = d.videos || [];
+        if (!vids.length) { grid.innerHTML = '<div class="card">Belum ada file MP4 di folder out/.</div>'; return; }
+        grid.innerHTML = vids.map((v) => {
+          const url = apiUrl(`/api/media/video?path=${encodeURIComponent(v.relPath)}&pin=${encodeURIComponent(PIN)}`);
+          const dl = apiUrl(`/api/media/video?path=${encodeURIComponent(v.relPath)}&download=1&pin=${encodeURIComponent(PIN)}`);
+          const mb = (v.sizeBytes / 1048576).toFixed(1);
+          return `<div class="card">
+            <h3>${esc(v.relPath)}</h3>
+            <div class="meta">${mb} MB · ${esc(v.mtime)}</div>
+            <video class="portrait" controls preload="metadata" src="${url}"></video>
+            <div class="btn-row"><a class="btn primary" href="${dl}">Download MP4</a></div>
+          </div>`;
+        }).join("");
+      } catch (e) {
+        grid.innerHTML = `<div class="card err-msg">Gagal memuat video: ${esc(e.message)}</div>`;
+      }
     }
 
     async function loadStatus() {
-      const st = await api("/api/status");
-      const qMini = window.__lastQuota ? ` · AI: ${window.__lastQuota.status}` : "";
-      document.getElementById("hdrMeta").textContent =
-        `TMUX: ${st.tmuxSessions.join(", ") || "none"} · PROCS: ${st.activeRenderProcs}${qMini} · ${st.tunnelUrl || "LOCAL"}`;
-      document.getElementById("monitorMeta").textContent = `${st.uptime}\n`;
-      document.getElementById("prodLogTail").textContent = st.prodLogTail || "(Kosong)";
-      const tp = document.getElementById("tmuxPanes");
-      tp.innerHTML = Object.entries(st.panes)
-        .map(([k, v]) => `<h4 style="margin:12px 0 6px; color:var(--gold)">tmux: ${k}</h4><pre>${v}</pre>`)
-        .join("");
-    }
-
-    async function loadProjects() {
-      const data = await api("/api/projects");
-      const pl = document.getElementById("projectList");
-      pl.innerHTML = data.projects.map((p) => `
-        <div class="card">
-          <h3>${p.title}</h3>
-          <div class="meta">slug: ${p.slug} · ${p.visualStyle || ""}</div>
-          <div style="font-size:13px; color:var(--muted); margin-bottom:10px">${(p.prompt || "").slice(0, 180)}</div>
-          ${p.audio ? `<audio controls style="width:100%" src="${withPin(`/api/media/audio?path=${encodeURIComponent(p.audio.file)}`)}"></audio>` : `<span class="pill">Belum ada audio</span>`}
-        </div>
-      `).join("") || "<p style='color:var(--muted)'>Belum ada project baru di public/projects/.</p>";
-    }
-
-    async function saveProject() {
-      const st = document.getElementById("projStatus");
-      st.className = "status-msg";
-      st.textContent = "Menyimpan...";
       try {
-        const res = await api("/api/projects", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            slug: document.getElementById("projSlug").value,
-            title: document.getElementById("projTitle").value,
-            visualStyle: document.getElementById("projStyle").value,
-            prompt: document.getElementById("projPrompt").value,
-            notes: document.getElementById("projNotes").value,
-          }),
-        });
-        document.getElementById("audioSlug").value = res.brief.slug;
-        st.textContent = `Tersimpan: public/projects/${res.brief.slug}/brief.json`;
-        loadProjects();
-      } catch (e) {
-        st.className = "status-msg err-msg";
-        st.textContent = e.message;
-      }
-    }
-
-    async function uploadAudio() {
-      const slug = document.getElementById("audioSlug").value.trim();
-      const file = document.getElementById("audioFile").files[0];
-      const st = document.getElementById("audioStatus");
-      if (!slug || !file) {
-        st.className = "status-msg err-msg";
-        st.textContent = "Isi project slug dan pilih file audio dulu.";
-        return;
-      }
-      st.className = "status-msg";
-      st.textContent = "Mengunggah & menganalisis ffprobe...";
-      try {
-        const res = await api(`/api/projects/${encodeURIComponent(slug)}/audio`, {
-          method: "POST",
-          headers: { "x-file-name": file.name, "Content-Type": "application/octet-stream" },
-          body: file,
-        });
-        st.textContent = `Berhasil diunggah: ${res.file} (${(res.sizeBytes / 1048576).toFixed(2)} MB)`;
-        document.getElementById("audioAnalysis").textContent = JSON.stringify(
-          { format: res.probe?.format, silencesCount: res.silences?.length, firstPauses: res.silences?.slice(0, 8) },
-          null,
-          2
-        );
-        loadProjects();
-      } catch (e) {
-        st.className = "status-msg err-msg";
-        st.textContent = e.message;
-      }
-    }
-
-    function toggleJobInputs() {
-      const m = document.getElementById("jobMode").value;
-      document.getElementById("framesWrap").style.display = m === "render" ? "none" : "block";
-    }
-
-    async function triggerJob() {
-      const st = document.getElementById("jobStatus");
-      st.className = "status-msg";
-      st.textContent = "Memulai sesi tmux...";
-      try {
-        const res = await api("/api/jobs", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            compId: document.getElementById("jobComp").value,
-            mode: document.getElementById("jobMode").value,
-            frames: document.getElementById("jobFrames").value,
-          }),
-        });
-        st.textContent = `Berjalan di tmux: ${res.sessionName} (log: ${res.logFile})`;
-        loadStatus();
-      } catch (e) {
-        st.className = "status-msg err-msg";
-        st.textContent = e.message;
-      }
-    }
-
-    async function submitRevision() {
-      const st = document.getElementById("revStatus");
-      st.className = "status-msg";
-      try {
-        const res = await api("/api/jobs", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mode: "revision_note",
-            targetEpisode: document.getElementById("revEp").value,
-            frames: document.getElementById("revTs").value,
-            notes: document.getElementById("revNotes").value,
-          }),
-        });
-        st.textContent = `Catatan revisi disimpan di ${res.savedTo}`;
-      } catch (e) {
-        st.className = "status-msg err-msg";
-        st.textContent = e.message;
-      }
-    }
-
-    let __quotaData = null;
-
-    function escHtml(s) {
-      return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-    }
-
-    function renderQuotaUI(data) {
-      __quotaData = data;
-      window.__lastQuota = data;
-      const q = data.quota;
-      const sys = data.liveSystem;
-      const warnPct = q.warningThresholdPct || 80;
-
-      const badge = document.getElementById("quotaStatusBadge");
-      badge.textContent = data.status.replace("_", " ");
-      badge.className = `badge-status badge-${data.status}`;
-
-      const pauseBtn = document.getElementById("pauseBtn");
-      pauseBtn.textContent = q.paused ? "Resume AI & Render" : "Pause Semua Render";
-      pauseBtn.className = q.paused ? "btn primary" : "btn warn";
-
-      document.getElementById("quotaSubtitle").textContent =
-        `Hari: ${q.usage.currentDay} (WIB) · Bulan: ${q.usage.currentMonth} · RAM VPS: ${sys.ramUsedMb}/${sys.ramTotalMb} MB (${sys.ramPct}%) · Disk: ${sys.diskSummary} · Render Aktif: ${sys.activeRenders}/${q.limits.maxConcurrentRenders}`;
-
-      const alertHtml = [
-        ...data.blockedReasons.map((r) => `<div style="color:#fca5a5">[BLOCK] ${escHtml(r)}</div>`),
-        ...data.warnings.map((w) => `<div style="color:#fde68a">[WARN] ${escHtml(w)}</div>`),
-      ].join("") || `<div style="color:#86efac">Semua kuota AI, TTS, dan resource VPS dalam batas aman.</div>`;
-      document.getElementById("quotaAlerts").innerHTML = alertHtml;
-
-      document.getElementById("quotaMeters").innerHTML = Object.values(data.meters).map((m) => {
-        const w = Math.min(100, Math.max(0, m.pct));
-        const cls = m.pct >= 100 ? "crit" : m.pct >= warnPct ? "warn" : "";
-        return `
-          <div class="meter-row">
-            <div class="meter-head">
-              <span>${escHtml(m.label)}</span>
-              <span>${m.used.toLocaleString()} / ${m.limit.toLocaleString()} ${escHtml(m.unit)} (${m.pct}%)</span>
-            </div>
-            <div class="meter-track"><div class="meter-fill ${cls}" style="width:${w}%"></div></div>
-          </div>
-        `;
-      }).join("");
-
-      const sel = document.getElementById("qDefaultModel");
-      sel.innerHTML = (data.models || [])
-        .map((m) => `<option value="${escHtml(m.id)}">${escHtml(m.label)} (${escHtml(m.id)})</option>`)
-        .join("");
-      sel.value = q.defaultModel;
-
-      document.getElementById("qAiTasksLimit").value = q.limits.aiTasksPerDay;
-      document.getElementById("qRenderJobsLimit").value = q.limits.renderJobsPerDay;
-      document.getElementById("qTokensLimit").value = q.limits.aiTokensPerMonth;
-      document.getElementById("qTtsLimit").value = q.limits.ttsCharsPerMonth;
-      document.getElementById("qBudgetLimit").value = q.limits.monthlyBudgetUsd;
-      document.getElementById("qWarnPct").value = q.warningThresholdPct;
-      document.getElementById("qMaxConc").value = q.limits.maxConcurrentRenders;
-      document.getElementById("qMaxRam").value = q.limits.maxRamPct;
-      document.getElementById("qAutoBlock").value = String(q.autoBlockRenderOnLimit);
-
-      document.getElementById("providerCards").innerHTML = (q.providers || []).map((p, idx) => `
-        <div style="border:1px solid var(--border); border-radius:4px; padding:10px; margin-bottom:8px; background:#0d1410">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
-            <strong style="color:var(--gold); font-size:13px">${escHtml(p.name)}</strong>
-            <span class="pill">${escHtml(p.plan)} · ${escHtml(p.resetInfo)}</span>
-          </div>
-          <div class="two-col" style="margin-top:6px">
-            <div>
-              <label style="margin-top:4px">Sisa Kuota (%)</label>
-              <input id="provPct_${idx}" type="number" min="0" max="100" value="${Number(p.remainingPct ?? 100)}" />
-            </div>
-            <div>
-              <label style="margin-top:4px">Catatan / Info Akun</label>
-              <input id="provNote_${idx}" type="text" value="${escHtml(p.note || "")}" />
-            </div>
-          </div>
-        </div>
-      `).join("");
-
-      document.getElementById("quotaHistory").textContent = (q.history || []).length
-        ? q.history.map((h) => `[${h.at}] (${h.type}) ${h.delta} · ${h.model || "-"} — ${h.note || ""}`).join("\n")
-        : "Belum ada catatan pemakaian.";
-    }
-
-    async function loadQuota(refresh = false) {
-      try {
-        const data = await api(`/api/ai-quota${refresh ? "?refresh=1" : ""}`);
-        renderQuotaUI(data);
-      } catch (e) {
-        const el = document.getElementById("quotaAlerts");
-        if (el) el.innerHTML = `<div style="color:#fca5a5">${escHtml(e.message)}</div>`;
-      }
-    }
-
-    async function toggleQuotaPause() {
-      if (!__quotaData) await loadQuota();
-      const next = !(__quotaData?.quota?.paused);
-      const res = await api("/api/ai-quota", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paused: next }),
-      });
-      renderQuotaUI(res);
-    }
-
-    async function saveQuotaConfig() {
-      const st = document.getElementById("quotaSaveStatus");
-      st.className = "status-msg";
-      st.textContent = "Menyimpan konfigurasi kuota...";
-      try {
-        const res = await api("/api/ai-quota", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            defaultModel: document.getElementById("qDefaultModel").value,
-            warningThresholdPct: Number(document.getElementById("qWarnPct").value),
-            autoBlockRenderOnLimit: document.getElementById("qAutoBlock").value === "true",
-            limits: {
-              aiTasksPerDay: Number(document.getElementById("qAiTasksLimit").value),
-              renderJobsPerDay: Number(document.getElementById("qRenderJobsLimit").value),
-              aiTokensPerMonth: Number(document.getElementById("qTokensLimit").value),
-              ttsCharsPerMonth: Number(document.getElementById("qTtsLimit").value),
-              monthlyBudgetUsd: Number(document.getElementById("qBudgetLimit").value),
-              maxConcurrentRenders: Number(document.getElementById("qMaxConc").value),
-              maxRamPct: Number(document.getElementById("qMaxRam").value),
-            },
-          }),
-        });
-        renderQuotaUI(res);
-        st.textContent = "Konfigurasi kuota & limit tersimpan di VPS.";
-      } catch (e) {
-        st.className = "status-msg err-msg";
-        st.textContent = e.message;
-      }
-    }
-
-    async function resetQuotaCounter(action) {
-      const res = await api("/api/ai-quota/record", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
-      });
-      renderQuotaUI(res);
-      document.getElementById("quotaSaveStatus").textContent =
-        action === "reset_daily" ? "Counter harian direset." : "Counter bulanan direset.";
-    }
-
-    async function recordQuotaUsage() {
-      const st = document.getElementById("recStatus");
-      st.className = "status-msg";
-      try {
-        const res = await api("/api/ai-quota/record", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "record",
-            tasks: Number(document.getElementById("recTasks").value || 0),
-            tokens: Number(document.getElementById("recTokens").value || 0),
-            ttsChars: Number(document.getElementById("recTts").value || 0),
-            usd: Number(document.getElementById("recUsd").value || 0),
-            note: document.getElementById("recNote").value,
-          }),
-        });
-        renderQuotaUI(res);
-        st.textContent = "Pemakaian berhasil dicatat.";
-      } catch (e) {
-        st.className = "status-msg err-msg";
-        st.textContent = e.message;
-      }
-    }
-
-    async function saveProviders() {
-      if (!__quotaData?.quota?.providers) return;
-      const updated = __quotaData.quota.providers.map((p, idx) => ({
-        ...p,
-        remainingPct: Number(document.getElementById(`provPct_${idx}`)?.value ?? p.remainingPct),
-        note: document.getElementById(`provNote_${idx}`)?.value ?? p.note,
-      }));
-      const res = await api("/api/ai-quota", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ providers: updated }),
-      });
-      renderQuotaUI(res);
-      document.getElementById("recStatus").textContent = "Sisa kuota provider disimpan.";
-    }
-
-    async function initAll() {
-      try {
-        await api("/api/auth-check");
-        await Promise.all([loadEpisodes(), loadQuota(), loadStatus(), loadProjects()]);
-        setInterval(() => {
-          loadStatus().catch(() => {});
-          loadQuota().catch(() => {});
-        }, 10000);
+        const r = await apiFetch("/api/status");
+        const d = await r.json();
+        document.getElementById("monitorMeta").textContent =
+          `Uptime: ${d.uptime || "-"} · RAM: ${d.memoryMb || "-"} · Render procs: ${d.activeRenderProcs ?? 0}`;
       } catch {}
     }
 
-    initAll();
+    (async () => {
+      try {
+        const h = await fetch(apiUrl("/api/health")).then((r) => r.json());
+        if (h.pinRequired && !PIN) {
+          document.getElementById("pinGate").classList.remove("hidden");
+          return;
+        }
+        await loadAutomation();
+      } catch {
+        document.getElementById("pinGate").classList.remove("hidden");
+      }
+    })();
   </script>
 </body>
 </html>
