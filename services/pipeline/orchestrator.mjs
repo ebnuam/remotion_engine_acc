@@ -69,6 +69,12 @@ export async function runPipeline({
   renderConcurrency = undefined,
   renderFrames = undefined,
   videoPublicUrl = undefined,
+  thumbnailPath = undefined,
+  useYouTubeSop = false,
+  unlistedFirst = undefined,
+  waitForProcessing = undefined,
+  publishAt = undefined,
+  seoFilename = undefined,
   platforms = SUPPORTED_PLATFORMS,
   // Audio stage options
   ttsMode = undefined,
@@ -378,14 +384,29 @@ export async function runPipeline({
         ? JSON.parse(fs.readFileSync(socialPath, "utf8"))
         : {};
 
+      const resolvedThumb =
+        thumbnailPath ||
+        [
+          path.join(resolvedJobDir, "thumbnails_ab", "thumb_A_malam_cofferdam.jpg"),
+          path.join(resolvedJobDir, "thumbnails_ab", "thumb_A.jpg"),
+          path.join(resolvedJobDir, "thumbnail_16x9.jpg"),
+          path.join(resolvedJobDir, "thumbnail_9x16.jpg"),
+        ].find((p) => fs.existsSync(p));
+
       const postResult = await publishToPlatforms({
         platforms,
         videoPath: resolvedVideoPath,
+        thumbnailPath: resolvedThumb,
         videoPublicUrl,
         socialPack,
         env: mergedEnv,
         dryRun: stageDryRun,
         fetchImpl,
+        useYouTubeSop,
+        unlistedFirst,
+        waitForProcessing,
+        publishAt,
+        seoFilename,
       });
 
       manifest.stages.post = {

@@ -3,7 +3,12 @@
  * Isolates each platform so a failure on one channel never aborts the others.
  */
 
-import { publishToYouTube, isYouTubeConfigured } from "./youtube.mjs";
+import {
+  computeNextPrimeTimeISO,
+  publishToYouTube,
+  isYouTubeConfigured,
+  slugifyVideoFilename,
+} from "./youtube.mjs";
 import {
   publishToFacebookReels,
   publishToInstagramReels,
@@ -24,15 +29,35 @@ export function getPlatformReadiness(env = process.env) {
 export async function publishToPlatforms({
   platforms = SUPPORTED_PLATFORMS,
   videoPath,
+  thumbnailPath = undefined,
   videoPublicUrl = undefined,
   socialPack,
   env = process.env,
   dryRun = true,
   fetchImpl = globalThis.fetch,
+  useYouTubeSop = false,
+  unlistedFirst = undefined,
+  waitForProcessing = undefined,
+  publishAt = undefined,
+  seoFilename = undefined,
+  maxProcessingWaitMs = undefined,
+  pollIntervalMs = undefined,
 }) {
   const normalized = platforms
     .map((p) => String(p || "").trim().toLowerCase())
     .filter((p) => SUPPORTED_PLATFORMS.includes(p));
+
+  const resolvedUnlistedFirst =
+    typeof unlistedFirst === "boolean" ? unlistedFirst : Boolean(useYouTubeSop);
+  const resolvedWaitForProcessing =
+    typeof waitForProcessing === "boolean" ? waitForProcessing : Boolean(useYouTubeSop);
+  const resolvedSeoFilename =
+    seoFilename ||
+    (useYouTubeSop && socialPack?.youtube?.title
+      ? slugifyVideoFilename(socialPack.youtube.title)
+      : undefined);
+  const resolvedPublishAt =
+    publishAt || (useYouTubeSop ? computeNextPrimeTimeISO() : undefined);
 
   const results = {};
 
@@ -41,10 +66,17 @@ export async function publishToPlatforms({
       if (platform === "youtube") {
         results.youtube = await publishToYouTube({
           videoPath,
+          thumbnailPath,
           socialPack,
           env,
           dryRun,
           fetchImpl,
+          unlistedFirst: resolvedUnlistedFirst,
+          waitForProcessing: resolvedWaitForProcessing,
+          publishAt: resolvedPublishAt,
+          seoFilename: resolvedSeoFilename,
+          ...(maxProcessingWaitMs !== undefined ? { maxProcessingWaitMs } : {}),
+          ...(pollIntervalMs !== undefined ? { pollIntervalMs } : {}),
         });
       } else if (platform === "facebook") {
         results.facebook = await publishToFacebookReels({

@@ -11,8 +11,11 @@
 import { loadEnvFile } from "../../ai-gateway/config.mjs";
 import { TTS_PROVIDERS } from "../config.mjs";
 import {
+  TTSAuthError,
   TTSConfigError,
   TTSProviderUnavailableError,
+  TTSQuotaExceededError,
+  TTSRateLimitError,
   TTSTimeoutError,
   classifyHttpTtsError,
 } from "../errors.mjs";
@@ -70,13 +73,46 @@ function parseRateToSpeed(rate) {
   return Number(Math.min(1.2, Math.max(0.7, 1 + pct / 100)).toFixed(2));
 }
 
+function parseKeyList(raw) {
+  if (Array.isArray(raw)) {
+    return raw.map((x) => String(x || "").trim()).filter(Boolean);
+  }
+  return String(raw || "")
+    .split(/[\s,;]+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+function resolveApiKeys(env, fileVars, overrides) {
+  const pool = [];
+  const pushUnique = (k) => {
+    if (k && !pool.includes(k)) pool.push(k);
+  };
+
+  if (overrides.apiKeys !== undefined) {
+    for (const k of parseKeyList(overrides.apiKeys)) pushUnique(k);
+  }
+  if (overrides.apiKey !== undefined && overrides.apiKey !== null) {
+    for (const k of parseKeyList(overrides.apiKey)) pushUnique(k);
+  }
+  if (pool.length === 0) {
+    for (const src of [env, fileVars]) {
+      for (const k of parseKeyList(src.ELEVENLABS_API_KEYS)) pushUnique(k);
+      for (const k of parseKeyList(src.ELEVENLABS_API_KEY)) pushUnique(k);
+      for (const k of parseKeyList(src.ELEVENLABS_API_KEY_2)) pushUnique(k);
+    }
+  }
+  return pool;
+}
+
 export function createElevenLabsAdapter(options = {}) {
   const env = options.env ?? process.env;
   const envFile = options.envFile ?? env.TTS_ENV_FILE ?? env.AI_GATEWAY_ENV_FILE ?? "";
   const fileVars = envFile ? loadEnvFile(envFile) : {};
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
 
-  const apiKey = readVar(env, fileVars, options, ["ELEVENLABS_API_KEY"], "apiKey");
+  const apiKeys = resolveApiKeys(env, fileVars, options);
+  const apiKey = apiKeys[0] || "";
   const defaultVoice = readVar(
     env,
     fileVars,
@@ -108,7 +144,7 @@ export function createElevenLabsAdapter(options = {}) {
       ? Number(rawRateUsd)
       : DEFAULT_USD_PER_1K_CHARS;
 
-  const secrets = apiKey ? [apiKey] : [];
+  const secrets = [...apiKeys];
 
   function getCapabilities() {
     return {
@@ -120,12 +156,13 @@ export function createElevenLabsAdapter(options = {}) {
       defaultModel,
       providerVersion: PROVIDER_VERSION,
       maxCharsPerRequest: 5_000,
+      configuredKeyCount: apiKeys.length,
     };
   }
 
   function validateConfig() {
     const errors = [];
-    if (!apiKey) {
+    if (apiKeys.length === 0) {
       errors.push("Missing ELEVENLABS_API_KEY.");
     }
     if (!defaultVoice) {
@@ -145,6 +182,46 @@ export function createElevenLabsAdapter(options = {}) {
       errors.push("Global fetch implementation is unavailable.");
     }
     return { ok: errors.length === 0, errors };
+  }
+
+  async function checkQuotas() {
+    const results = [];
+    for (let idx = 0; idx < apiKeys.length; idx += 1) {
+      const key = apiKeys[idx];
+      const masked = `${key.slice(0, 6)}...${key.slice(-4)}`;
+      try {
+        const resp = await fetchImpl(`${baseUrl}/v1/user/subscription`, {
+          method: "GET",
+          headers: { "xi-api-key": key },
+        });
+        if (!resp.ok) {
+          results.push({ index: idx, keyMask: masked, ok: false, status: resp.status, remainingChars: 0 });
+          continue;
+        }
+        const d = await resp.json();
+        const used = Number(d?.character_count ?? 0);
+        const limit = Number(d?.character_limit ?? 0);
+        results.push({
+          index: idx,
+          keyMask: masked,
+          ok: true,
+          tier: d?.tier || "unknown",
+          usedChars: used,
+          limitChars: limit,
+          remainingChars: Math.max(0, limit - used),
+        });
+      } catch (err) {
+        results.push({
+          index: idx,
+          keyMask: masked,
+          ok: false,
+          error: redactTTSText(err?.message || String(err), secrets),
+          remainingChars: 0,
+        });
+      }
+    }
+    const totalRemainingChars = results.reduce((acc, r) => acc + (r.remainingChars || 0), 0);
+    return { keys: results, totalRemainingChars };
   }
 
   function estimateCost(charCount = 0) {
@@ -203,55 +280,88 @@ export function createElevenLabsAdapter(options = {}) {
       voice_settings: voiceSettings,
     };
 
-    let response;
-    try {
-      response = await fetchImpl(url, {
-        method: "POST",
-        headers: {
-          "xi-api-key": apiKey,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(payload),
-        signal,
-      });
-    } catch (err) {
-      if (signal?.aborted || err?.name === "AbortError") {
-        throw new TTSTimeoutError(`ElevenLabs request aborted/timed out after ${timeoutMs}ms.`, {
-          provider: TTS_PROVIDERS.ELEVENLABS,
-          timeoutMs,
-          requestId,
+    let response = null;
+    let usedKeyIndex = 0;
+    let lastError = null;
+
+    for (let keyIdx = 0; keyIdx < apiKeys.length; keyIdx += 1) {
+      const currentKey = apiKeys[keyIdx];
+      usedKeyIndex = keyIdx;
+      try {
+        response = await fetchImpl(url, {
+          method: "POST",
+          headers: {
+            "xi-api-key": currentKey,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(payload),
+          signal,
         });
-      }
-      throw new TTSProviderUnavailableError(
-        `ElevenLabs network error: ${redactTTSText(err?.message || String(err), secrets)}`,
-        {
-          provider: TTS_PROVIDERS.ELEVENLABS,
-          status: 0,
-          retryable: true,
-          requestId,
+      } catch (err) {
+        if (signal?.aborted || err?.name === "AbortError") {
+          throw new TTSTimeoutError(`ElevenLabs request aborted/timed out after ${timeoutMs}ms.`, {
+            provider: TTS_PROVIDERS.ELEVENLABS,
+            timeoutMs,
+            requestId,
+          });
         }
-      );
-    }
+        throw new TTSProviderUnavailableError(
+          `ElevenLabs network error: ${redactTTSText(err?.message || String(err), secrets)}`,
+          {
+            provider: TTS_PROVIDERS.ELEVENLABS,
+            status: 0,
+            retryable: true,
+            requestId,
+          }
+        );
+      }
 
-    const respRequestId = response.headers?.get?.("request-id") || requestId;
+      if (response.ok) {
+        lastError = null;
+        break;
+      }
 
-    if (!response.ok) {
       let bodyText = "";
       try {
         bodyText = await response.text();
       } catch {
         bodyText = "";
       }
-      throw classifyHttpTtsError({
+      const respReqId = response.headers?.get?.("request-id") || requestId;
+      const errObj = classifyHttpTtsError({
         status: response.status,
         provider: TTS_PROVIDERS.ELEVENLABS,
         bodyPreview: bodyText,
         retryAfterHeader: response.headers?.get?.("retry-after") ?? null,
-        requestId: respRequestId,
+        requestId: respReqId,
         secrets,
       });
+
+      const canFailoverKey =
+        keyIdx < apiKeys.length - 1 &&
+        (errObj instanceof TTSQuotaExceededError ||
+          errObj instanceof TTSAuthError ||
+          errObj instanceof TTSRateLimitError);
+
+      if (canFailoverKey) {
+        lastError = errObj;
+        response = null;
+        continue;
+      }
+      throw errObj;
     }
+
+    if (!response || !response.ok) {
+      throw lastError || new TTSProviderUnavailableError("ElevenLabs failed across all API keys.", {
+        provider: TTS_PROVIDERS.ELEVENLABS,
+        status: 503,
+        retryable: false,
+        requestId,
+      });
+    }
+
+    const respRequestId = response.headers?.get?.("request-id") || requestId;
 
     let data;
     try {
@@ -292,6 +402,8 @@ export function createElevenLabsAdapter(options = {}) {
         elevenLabsRequestId: respRequestId || null,
         wordCount: words ? words.length : 0,
         timestampsSource: words && words.length > 0 ? "elevenlabs_char_alignment" : "none",
+        keySlotUsed: usedKeyIndex + 1,
+        configuredKeyCount: apiKeys.length,
       },
     };
   }
@@ -300,6 +412,7 @@ export function createElevenLabsAdapter(options = {}) {
     getCapabilities,
     validateConfig,
     estimateCost,
+    checkQuotas,
     synthesize,
   };
 }

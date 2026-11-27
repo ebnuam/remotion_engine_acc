@@ -40,6 +40,12 @@ function parseArgs(argv) {
     outMp4: undefined,
     existingVideoPath: undefined,
     videoPublicUrl: undefined,
+    thumbnailPath: undefined,
+    useYouTubeSop: false,
+    unlistedFirst: undefined,
+    waitForProcessing: undefined,
+    publishAt: undefined,
+    seoFilename: undefined,
     envFile: undefined,
     jobId: undefined,
     ttsMode: undefined,
@@ -78,6 +84,12 @@ function parseArgs(argv) {
     else if (a === "--out" && argv[i + 1]) args.outMp4 = argv[++i];
     else if (a === "--existing-video" && argv[i + 1]) args.existingVideoPath = argv[++i];
     else if (a === "--video-public-url" && argv[i + 1]) args.videoPublicUrl = argv[++i];
+    else if (a === "--thumbnail" && argv[i + 1]) args.thumbnailPath = argv[++i];
+    else if (a === "--yt-sop") args.useYouTubeSop = true;
+    else if (a === "--unlisted-first") args.unlistedFirst = true;
+    else if (a === "--wait-processing") args.waitForProcessing = true;
+    else if (a === "--publish-at" && argv[i + 1]) args.publishAt = argv[++i];
+    else if (a === "--seo-filename" && argv[i + 1]) args.seoFilename = argv[++i];
     else if (a === "--env-file" && argv[i + 1]) args.envFile = argv[++i];
     else if (a === "--job-id" && argv[i + 1]) args.jobId = argv[++i];
     else if (a === "--tts-mode" && argv[i + 1]) args.ttsMode = argv[++i];

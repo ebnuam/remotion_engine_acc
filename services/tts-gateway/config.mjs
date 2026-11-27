@@ -51,7 +51,7 @@ const DEFAULT_TARGET_MIN_SEC = 50;
 const DEFAULT_TARGET_MAX_SEC = 65;
 
 const SECRET_ENV_KEY_PATTERN =
-  /^(?:TTS|AZURE|ELEVENLABS|GOOGLE_TTS|OPENAI_TTS).*_(?:API_KEY|KEY|TOKEN|SECRET|PASSWORD)$/i;
+  /^(?:TTS|AZURE|ELEVENLABS|GOOGLE_TTS|OPENAI_TTS).*_(?:API_KEYS?|KEYS?|TOKENS?|SECRETS?|PASSWORD)$/i;
 
 function parseBool(value, fallback) {
   if (value === undefined || value === null || value === "") return fallback;
@@ -262,6 +262,10 @@ export function resolveTTSConfig({ env = process.env, envFile = undefined, overr
     for (const [k, v] of Object.entries(source)) {
       if (SECRET_ENV_KEY_PATTERN.test(k) && typeof v === "string" && v.length >= 4) {
         secretSet.add(v);
+        for (const part of v.split(/[\s,;]+/)) {
+          const trimmed = part.trim();
+          if (trimmed.length >= 4) secretSet.add(trimmed);
+        }
       }
     }
   }

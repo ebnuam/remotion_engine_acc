@@ -596,3 +596,24 @@ test("full 6-stage pipeline (generate -> audio -> scene -> render --props -> qc 
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test("publishToPlatforms forwards 5-Step YouTube SOP options (unlistedFirst, waitForProcessing, publishAt, seoFilename)", async () => {
+  const { publishToPlatforms } = await import("./publishers/index.mjs");
+  const res = await publishToPlatforms({
+    platforms: ["youtube"],
+    videoPath: "/tmp/dummy.mp4",
+    socialPack: {
+      youtube: {
+        title: "Kenapa Jembatan Laut Tidak Hanyut? #Shorts",
+        description: "Deskripsi SEO jembatan laut.",
+      },
+    },
+    dryRun: true,
+    useYouTubeSop: true,
+    publishAt: "2026-11-27T12:00:00.000Z",
+  });
+  assert.equal(res.ok, true);
+  assert.equal(res.results.youtube.payload.status.privacyStatus, "unlisted");
+  assert.equal(res.results.youtube.uploadSlug, "kenapa-jembatan-laut-tidak-hanyut.mp4");
+  assert.equal(res.results.youtube.plannedPublishAt, "2026-11-27T12:00:00.000Z");
+});

@@ -351,3 +351,54 @@ test("adapters validate missing config cleanly without throwing and redact proxy
     }
   );
 });
+
+test("elevenLabsAdapter rotates across ELEVENLABS_API_KEYS on quota/auth failure and redacts all keys", async () => {
+  const k1 = "sk_first_exhausted_key_1111";
+  const k2 = "sk_second_healthy_key_2222";
+  const usedKeys = [];
+
+  const adapter = createElevenLabsAdapter({
+    env: {
+      ELEVENLABS_API_KEYS: `${k1},${k2}`,
+      ELEVENLABS_VOICE_ID: "voice_koko_01",
+    },
+    fetchImpl: async (url, init) => {
+      if (url.endsWith("/v1/user/subscription")) {
+        const key = init.headers["xi-api-key"];
+        if (key === k1) {
+          return { ok: true, status: 200, json: async () => ({ tier: "free", character_count: 10000, character_limit: 10000 }) };
+        }
+        return { ok: true, status: 200, json: async () => ({ tier: "free", character_count: 100, character_limit: 10000 }) };
+      }
+      usedKeys.push(init.headers["xi-api-key"]);
+      if (init.headers["xi-api-key"] === k1) {
+        return {
+          ok: false,
+          status: 401,
+          headers: new Headers({ "request-id": "el-q1" }),
+          text: async () => `quota_exceeded for ${k1}`,
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({ "request-id": "el-q2" }),
+        json: async () => ({
+          audio_base64: Buffer.from("FAKE_OK").toString("base64"),
+          alignment: {
+            characters: ["O", "k"],
+            character_start_times_seconds: [0, 0.1],
+            character_end_times_seconds: [0.1, 0.2],
+          },
+        }),
+      };
+    },
+  });
+
+  const quota = await adapter.checkQuotas();
+  assert.equal(quota.totalRemainingChars, 9900);
+  const res = await adapter.synthesize({ text: "Ok" });
+  assert.deepEqual(usedKeys, [k1, k2]);
+  assert.equal(res.providerMeta.keySlotUsed, 2);
+  assert.equal(res.providerMeta.configuredKeyCount, 2);
+});

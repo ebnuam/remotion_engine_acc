@@ -74,47 +74,44 @@ export const DEFAULT_DEMO_PLAN: AutoScenePlan = {
 
 const MinimalDiegeticLabel: React.FC<{ label?: string | null; lightMode?: string }> = ({
   label,
-  lightMode,
 }) => {
   const clean = String(label || "").trim();
   if (!clean) return null;
 
-  const isNight = lightMode === "night";
-  const pillW = Math.min(820, Math.max(360, clean.length * 24 + 100));
+  const pillW = Math.min(820, Math.max(420, clean.length * 22 + 110));
   const halfW = pillW / 2;
 
   return (
     <svg viewBox="0 0 1080 1920" style={{ width: 1080, height: 1920 }}>
-      <g transform="translate(540, 235)">
-        {/* Crisp comic drop shadow */}
+      <g transform="translate(540, 175)">
         <rect
-          x={-halfW + 8}
-          y={-40 + 8}
+          x={-halfW + 6}
+          y={-36 + 6}
           width={pillW}
-          height={82}
-          rx={41}
+          height={74}
+          rx={37}
           fill="#0f172a"
-          opacity={0.85}
+          opacity={0.22}
         />
         <rect
           x={-halfW}
-          y={-40}
+          y={-36}
           width={pillW}
-          height={82}
-          rx={41}
-          fill={isNight ? "#0ea5e9" : "#fffdf7"}
-          stroke="#0f172a"
+          height={74}
+          rx={37}
+          fill="#FFFDF7"
+          stroke="#0F172A"
           strokeWidth={6}
         />
         <text
           x="0"
-          y="13"
+          y="11"
           textAnchor="middle"
           fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif"
           fontWeight="900"
-          fontSize="36"
-          letterSpacing="1.2"
-          fill={isNight ? "#ffffff" : "#0f172a"}
+          fontSize="31"
+          letterSpacing="1.1"
+          fill="#0F172A"
         >
           {clean.toUpperCase()}
         </text>
