@@ -41,7 +41,11 @@ def main():
             print(f"ERROR: shots.json not found: {args.shots_json}", file=sys.stderr)
             sys.exit(1)
         with open(args.shots_json, encoding="utf-8") as f:
-            meta = json.load(f)
+            raw_meta = json.load(f)
+        if isinstance(raw_meta, list):
+            meta = {"shots": raw_meta}
+        elif isinstance(raw_meta, dict):
+            meta = raw_meta
 
     shots = meta.get("shots", [])
     planned = set()
