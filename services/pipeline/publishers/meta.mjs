@@ -11,7 +11,9 @@
  * - META_GRAPH_VERSION (default: "v21.0")
  */
 
+import crypto from "node:crypto";
 import fs from "node:fs";
+import path from "node:path";
 
 function getGraphBase(env) {
   const version = String(env.META_GRAPH_VERSION || "v21.0").trim();
@@ -30,6 +32,7 @@ export function isInstagramConfigured(env = process.env) {
 
 export async function publishToFacebookReels({
   videoPath,
+  thumbnailPath = undefined,
   socialPack,
   env = process.env,
   dryRun = true,
@@ -49,6 +52,7 @@ export async function publishToFacebookReels({
       configured: isFacebookConfigured(env),
       payload,
       videoPath,
+      ...(thumbnailPath ? { thumbnailPath } : {}),
     };
   }
 
@@ -118,17 +122,57 @@ export async function publishToFacebookReels({
     throw new Error(`Facebook Reels finish publish failed (HTTP ${finishResp.status}).`);
   }
 
+  // Step 4 (Optional): Upload custom Reel thumbnail so Facebook doesn't grab Frame 0
+  let thumbnailStatus = "not_provided";
+  let thumbnailWarning = null;
+  if (thumbnailPath && fs.existsSync(thumbnailPath)) {
+    try {
+      const thumbBuf = fs.readFileSync(thumbnailPath);
+      const ext = path.extname(thumbnailPath).toLowerCase();
+      const mime = ext === ".png" ? "image/png" : "image/jpeg";
+      const fileName = path.basename(thumbnailPath);
+      const boundary = `----KokIsoYoFbThumb${crypto.randomBytes(8).toString("hex")}`;
+      const headerA = Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="is_preferred"\r\n\r\ntrue\r\n--${boundary}\r\nContent-Disposition: form-data; name="source"; filename="${fileName}"\r\nContent-Type: ${mime}\r\n\r\n`,
+        "utf8"
+      );
+      const footer = Buffer.from(`\r\n--${boundary}--\r\n`, "utf8");
+      const mpBody = Buffer.concat([headerA, thumbBuf, footer]);
+      const thumbResp = await fetchImpl(
+        `${graphBase}/${startData.video_id}/thumbnails?access_token=${encodeURIComponent(token)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
+          body: mpBody,
+        }
+      );
+      if (thumbResp.ok) {
+        thumbnailStatus = "uploaded";
+      } else {
+        thumbnailStatus = "skipped_api_error";
+        thumbnailWarning = `FB thumbnail upload returned HTTP ${thumbResp.status}.`;
+      }
+    } catch (err) {
+      thumbnailStatus = "skipped_network_error";
+      thumbnailWarning = err?.message || String(err);
+    }
+  }
+
   return {
     platform: "facebook",
     status: "published",
     videoId: startData.video_id,
     videoState: payload.videoState,
+    thumbnailStatus,
+    ...(thumbnailWarning ? { thumbnailWarning } : {}),
   };
 }
 
 export async function publishToInstagramReels({
   videoPath,
   videoPublicUrl = undefined,
+  coverUrl = undefined,
+  thumbOffsetMs = 1500,
   socialPack,
   env = process.env,
   dryRun = true,
@@ -140,6 +184,7 @@ export async function publishToInstagramReels({
     media_type: "REELS",
     caption: String(ig.caption || "").slice(0, 2200),
     video_url: videoPublicUrl || null,
+    ...(coverUrl ? { cover_url: coverUrl } : { thumb_offset: thumbOffsetMs }),
     share_to_feed: true,
     firstComment: String(ig.firstComment || ""),
   };
@@ -185,6 +230,7 @@ export async function publishToInstagramReels({
     body: JSON.stringify({
       media_type: "REELS",
       video_url: videoPublicUrl,
+      ...(coverUrl ? { cover_url: coverUrl } : { thumb_offset: thumbOffsetMs }),
       caption: payload.caption,
       share_to_feed: true,
       access_token: token,

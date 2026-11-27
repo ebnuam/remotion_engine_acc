@@ -433,15 +433,15 @@ export function buildHeadlessAgyPrompt({
     "1. JANGAN sentuh `src/bridge/`, `public/bridge/`, `src/ship/`, `src/ep2_badak/`, `src/ep003_jembatan_laut/`, atau `out/ep003_jembatan_laut/`.",
     "2. WAJIB pakai **`StageDoc3D`** (`src/shared/doc3d/StageDoc3D.tsx`) + **`cinematicRealism.ts`** (`src/shared/doc3d/cinematicRealism.ts`: `createPbrMaterial`, `applyCinematicRig`, `frameHeroSafe9x16`, `createSculptedTerrain`) untuk shading PBR realistis (ACESFilmic, bayangan lembut, tekstur prosedural, rim light, fog atmosfer).",
     "3. DILARANG stick-figure 2D, DILARANG garis outline kartun tebal, DILARANG properti kotak polos seperti mainan, dan DILARANG gunung/bukit kerucut tajam (`ConeGeometry`) — gunakan `createSculptedTerrain()` dan geometri 3D detail (lathe/extrude/bevel/layered mechanical/organic assemblies) yang tampak seperti dokumenter teknik/sains modern.",
-    "4. ANTI FRAME KEPOTONG: gunakan `frameHeroSafe9x16(camera, target, bounds, { marginPercent: 0.20, fovDeg: 38, ... })` pada setiap shot sehingga seluruh subjek utama berada di zona aman 9:16 dan tidak terpotong tepi layar maupun ketutup UI YouTube Shorts.",
+    "4. ANTI FRAME KEPOTONG & ANTI FRAME PUTIH AWAL: gunakan `frameHeroSafe9x16(camera, target, bounds, { marginPercent: 0.20, fovDeg: 38, ... })` pada setiap shot. FRAME 0–5 WAJIB LANGSUNG MENAMPILKAN VISUAL HERO 3D PENUH (DILARANG frame putih, frame hitam, flash putih, atau fade-in dari kosong di Frame 0, karena Frame 0 dipakai sebagai cover preview Reels!).",
     "5. ANTI SUBTITLE PERMANEN & NOL EMOJI. Label teks (`renderOverlay`) hanya opsional 2-4 kata informatif di area aman atas.",
     "",
     "LANGKAH HEMAT TOKEN (MAKSIMAL 12-18 TOOL CALLS):",
     `1. Baca HANYA \`${outDir}/shots.json\`, \`src/shared/doc3d/StageDoc3D.tsx\`, dan \`src/shared/doc3d/cinematicRealism.ts\`.`,
     `2. Tulis komposisi terisolasi yang bersih di \`${srcDir}/\` (\`index.ts\`, \`Root.tsx\`, \`${compositionId}.tsx\`, \`world.ts\`) dengan \`durationInFrames={${totalFrames}}\`, 1080x1920 @ 30fps, dan audio \`<Audio src={staticFile("${publicAudioRelPath}")} />\`.`,
     "3. Jalankan `npx tsc --noEmit` (wajib 0 error).",
-    `4. Render 1 set proof stills (8-12 frame merata) ke \`${outDir}/proof_stills/\` pakai \`node scripts/kokisoyo-qa/bridge-stills.mjs --entry ${srcDir}/index.ts --comp ${compositionId} ... --gl swangle\` lalu gabung ke \`${outDir}/grid_check_1.jpg\`, baca gambar itu sekali untuk pastikan 0 objek kepotong/hitam/melayang (perbaiki segera jika ada defect).`,
-    `5. Buat thumbnail tajam & kontras di \`${outDir}/thumbnail_16x9.jpg\` + 3 varian A/B di \`${outDir}/thumbnails_ab/\` (\`thumb_A_utama.jpg\`, \`thumb_B_kontras.jpg\`, \`thumb_C_detail.jpg\`).`,
+    `4. Render 1 set proof stills (termasuk frame 0 dan 8-12 frame merata) ke \`${outDir}/proof_stills/\` pakai \`node scripts/kokisoyo-qa/bridge-stills.mjs --entry ${srcDir}/index.ts --comp ${compositionId} ... --gl swangle\` lalu gabung ke \`${outDir}/grid_check_1.jpg\`, baca gambar itu sekali untuk pastikan Frame 0 TIDAK putih/kosong dan 0 objek kepotong/hitam (perbaiki segera jika ada defect).`,
+    `5. Buat thumbnail tajam & kontras di \`${outDir}/thumbnail_16x9.jpg\` (1280x720), \`${outDir}/thumbnail_9x16.jpg\` (1080x1920 cover Reels), + 3 varian A/B di \`${outDir}/thumbnails_ab/\` (\`thumb_A_utama.jpg\`, \`thumb_B_kontras.jpg\`, \`thumb_C_detail.jpg\`).`,
     `6. Tulis \`${outDir}/render_meta.json\` berisi \`{"entry":"${srcDir}/index.ts","compositionId":"${compositionId}","totalFrames":${totalFrames},"audioFile":"${publicAudioRelPath}"}\`.`,
     "7. STOP DI SINI — JANGAN jalankan `npx remotion render` full 1080p dan JANGAN upload YouTube (Node.js worker akan merender 1080p & QA secara otomatis setelah kamu selesai agar hemat token!).",
   ].join("\n");
@@ -500,6 +500,13 @@ export async function renderAndQaEpisode({
     }
     if (!report.includes("frozen_spans(diff<0.02,>=12f)=[]")) {
       throw new Error(`QA gate failed for ${slug}: frozen spans detected in ${reportPath}`);
+    }
+    const whiteMatch = report.match(/unplanned_white\(mean>0\.93\)=\[([^\]]*)\]/);
+    if (whiteMatch && whiteMatch[1]) {
+      const whiteFrames = whiteMatch[1].split(",").map((s) => Number(s.trim())).filter(Number.isFinite);
+      if (whiteFrames.some((f) => f <= 2)) {
+        throw new Error(`QA gate failed for ${slug}: Frame 0-2 is blank white (${whiteMatch[1]}) in ${reportPath}`);
+      }
     }
   }
 

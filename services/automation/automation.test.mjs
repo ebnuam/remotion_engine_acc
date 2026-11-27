@@ -221,12 +221,23 @@ test("produceNextEpisode safely skips when another Remotion render process is ac
 test("startLocalMediaServer serves exact token path with Range support and rejects unknown paths", async () => {
   const tmpDir = makeTempDir();
   const mp4 = path.join(tmpDir, "clip.mp4");
+  const jpg = path.join(tmpDir, "thumbnail_9x16.jpg");
   fs.writeFileSync(mp4, Buffer.from("0123456789ABCDEF"));
-  const srv = await startLocalMediaServer({ filePath: mp4, publicFilename: "seo-clip.mp4" });
+  fs.writeFileSync(jpg, Buffer.from("FAKE_JPEG_COVER"));
+  const srv = await startLocalMediaServer({
+    filePath: mp4,
+    publicFilename: "seo-clip.mp4",
+    coverPath: jpg,
+    coverFilename: "thumbnail_9x16.jpg",
+  });
   try {
     const okResp = await fetch(srv.localUrl);
     assert.equal(okResp.status, 200);
     assert.equal(await okResp.text(), "0123456789ABCDEF");
+
+    const coverResp = await fetch(srv.coverLocalUrl);
+    assert.equal(coverResp.status, 200);
+    assert.equal(await coverResp.text(), "FAKE_JPEG_COVER");
 
     const rangeResp = await fetch(srv.localUrl, { headers: { Range: "bytes=2-5" } });
     assert.equal(rangeResp.status, 206);

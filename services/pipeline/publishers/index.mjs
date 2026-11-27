@@ -30,7 +30,9 @@ export async function publishToPlatforms({
   platforms = SUPPORTED_PLATFORMS,
   videoPath,
   thumbnailPath = undefined,
+  reelThumbnailPath = undefined,
   videoPublicUrl = undefined,
+  coverPublicUrl = undefined,
   socialPack,
   env = process.env,
   dryRun = true,
@@ -81,6 +83,7 @@ export async function publishToPlatforms({
       } else if (platform === "facebook") {
         results.facebook = await publishToFacebookReels({
           videoPath,
+          thumbnailPath: reelThumbnailPath || thumbnailPath,
           socialPack,
           env,
           dryRun,
@@ -90,6 +93,7 @@ export async function publishToPlatforms({
         results.instagram = await publishToInstagramReels({
           videoPath,
           videoPublicUrl,
+          coverUrl: coverPublicUrl,
           socialPack,
           env,
           dryRun,

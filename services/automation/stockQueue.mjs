@@ -361,6 +361,11 @@ export async function publishNextFromStock({
   });
 
   const platforms = resolveConfiguredPlatforms(env);
+  const portraitCoverPath = [
+    path.join(item.jobDir, "thumbnail_9x16.jpg"),
+    item.thumbnailPath,
+  ].find((p) => p && fs.existsSync(p));
+
   const needsInstagramHost =
     !dryRun && platforms.includes("instagram") && !env.IG_PUBLIC_VIDEO_BASE_URL;
   const staticVideoPublicUrl = env.IG_PUBLIC_VIDEO_BASE_URL
@@ -368,6 +373,12 @@ export async function publishNextFromStock({
     : dryRun && platforms.includes("instagram")
       ? `https://ephemeral-cloudflared.trycloudflare.com/${encodeURIComponent(seoFilename)}`
       : undefined;
+  const staticCoverPublicUrl =
+    env.IG_PUBLIC_VIDEO_BASE_URL && portraitCoverPath
+      ? `${env.IG_PUBLIC_VIDEO_BASE_URL.replace(/\/+$/, "")}/${encodeURIComponent(item.slug)}/${encodeURIComponent(path.basename(portraitCoverPath))}`
+      : dryRun && platforms.includes("instagram") && portraitCoverPath
+        ? `https://ephemeral-cloudflared.trycloudflare.com/${encodeURIComponent(path.basename(portraitCoverPath))}`
+        : undefined;
 
   if (!dryRun) {
     item.status = "publishing";
@@ -375,12 +386,14 @@ export async function publishNextFromStock({
   }
 
   try {
-    const runPublish = async (resolvedPublicUrl) =>
+    const runPublish = async (resolvedVideoUrl, resolvedCoverUrl) =>
       publishToPlatforms({
         platforms,
         videoPath: dryRun ? item.videoPath : seoVideoPath,
         thumbnailPath: item.thumbnailPath || undefined,
-        videoPublicUrl: resolvedPublicUrl,
+        reelThumbnailPath: portraitCoverPath || item.thumbnailPath || undefined,
+        videoPublicUrl: resolvedVideoUrl,
+        coverPublicUrl: resolvedCoverUrl || undefined,
         socialPack,
         env,
         dryRun,
@@ -397,12 +410,14 @@ export async function publishNextFromStock({
           {
             filePath: seoVideoPath,
             publicFilename: seoFilename,
+            coverPath: portraitCoverPath || null,
+            coverFilename: portraitCoverPath ? path.basename(portraitCoverPath) : null,
             cloudflaredBin: env.CLOUDFLARED_BIN || "cloudflared",
             fetchImpl,
           },
-          (ephemeralUrl) => runPublish(ephemeralUrl)
+          ({ videoUrl, coverUrl }) => runPublish(videoUrl, coverUrl)
         )
-      : await runPublish(staticVideoPublicUrl);
+      : await runPublish(staticVideoPublicUrl, staticCoverPublicUrl);
 
     if (dryRun) {
       return {

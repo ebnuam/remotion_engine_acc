@@ -1,11 +1,11 @@
 /**
  * Ephemeral Public HTTPS Media Host for Instagram Reels Graph API.
  *
- * Instagram Graph API requires a publicly reachable HTTPS `video_url` so Meta's
- * servers can download the MP4. When `IG_PUBLIC_VIDEO_BASE_URL` is not configured,
- * this helper spins up:
+ * Instagram Graph API requires a publicly reachable HTTPS `video_url` (and optional `cover_url`)
+ * so Meta's servers can download the MP4 + thumbnail cover. When `IG_PUBLIC_VIDEO_BASE_URL`
+ * is not configured, this helper spins up:
  * 1. An isolated local HTTP server on `127.0.0.1:0` serving ONLY the target MP4
- *    under a cryptographic random one-time path (`/<token>/<seoFilename>`).
+ *    and optional cover JPEG under cryptographic random one-time paths.
  * 2. A short-lived `cloudflared tunnel --url http://127.0.0.1:<port>` process.
  * 3. Automatic teardown as soon as Instagram finishes fetching the container.
  */
@@ -29,54 +29,82 @@ function parseRangeHeader(rangeHeader, fileSize) {
   return { start, end };
 }
 
-export async function startLocalMediaServer({ filePath, publicFilename = null }) {
-  const absPath = path.resolve(filePath);
-  if (!fs.existsSync(absPath)) {
-    throw new Error(`Ephemeral media file not found: ${absPath}`);
-  }
-  const stat = fs.statSync(absPath);
-  const fileSize = stat.size;
-  const token = crypto.randomBytes(24).toString("hex");
-  const safeName = encodeURIComponent(publicFilename || path.basename(absPath));
-  const expectedPath = `/${token}/${safeName}`;
-
-  const server = http.createServer((req, res) => {
-    const reqPath = (req.url || "").split("?")[0];
-    if (reqPath !== expectedPath || (req.method !== "GET" && req.method !== "HEAD")) {
-      res.writeHead(404, { "Content-Type": "text/plain" });
-      res.end("Not Found");
-      return;
-    }
-
-    const range = parseRangeHeader(req.headers.range, fileSize);
-    if (range) {
-      const chunkSize = range.end - range.start + 1;
-      res.writeHead(206, {
-        "Content-Range": `bytes ${range.start}-${range.end}/${fileSize}`,
-        "Accept-Ranges": "bytes",
-        "Content-Length": String(chunkSize),
-        "Content-Type": "video/mp4",
-        "Cache-Control": "no-store",
-      });
-      if (req.method === "HEAD") {
-        res.end();
-        return;
-      }
-      fs.createReadStream(absPath, { start: range.start, end: range.end }).pipe(res);
-      return;
-    }
-
-    res.writeHead(200, {
-      "Content-Length": String(fileSize),
+function serveSingleFile(req, res, fileInfo) {
+  const { absPath, fileSize, contentType } = fileInfo;
+  const range = parseRangeHeader(req.headers.range, fileSize);
+  if (range) {
+    const chunkSize = range.end - range.start + 1;
+    res.writeHead(206, {
+      "Content-Range": `bytes ${range.start}-${range.end}/${fileSize}`,
       "Accept-Ranges": "bytes",
-      "Content-Type": "video/mp4",
+      "Content-Length": String(chunkSize),
+      "Content-Type": contentType,
       "Cache-Control": "no-store",
     });
     if (req.method === "HEAD") {
       res.end();
       return;
     }
-    fs.createReadStream(absPath).pipe(res);
+    fs.createReadStream(absPath, { start: range.start, end: range.end }).pipe(res);
+    return;
+  }
+
+  res.writeHead(200, {
+    "Content-Length": String(fileSize),
+    "Accept-Ranges": "bytes",
+    "Content-Type": contentType,
+    "Cache-Control": "no-store",
+  });
+  if (req.method === "HEAD") {
+    res.end();
+    return;
+  }
+  fs.createReadStream(absPath).pipe(res);
+}
+
+export async function startLocalMediaServer({
+  filePath,
+  publicFilename = null,
+  coverPath = null,
+  coverFilename = null,
+}) {
+  const absPath = path.resolve(filePath);
+  if (!fs.existsSync(absPath)) {
+    throw new Error(`Ephemeral media file not found: ${absPath}`);
+  }
+  const token = crypto.randomBytes(24).toString("hex");
+  const safeName = encodeURIComponent(publicFilename || path.basename(absPath));
+  const expectedPath = `/${token}/${safeName}`;
+
+  const routes = new Map();
+  routes.set(expectedPath, {
+    absPath,
+    fileSize: fs.statSync(absPath).size,
+    contentType: "video/mp4",
+  });
+
+  let coverExpectedPath = null;
+  if (coverPath && fs.existsSync(coverPath)) {
+    const absCover = path.resolve(coverPath);
+    const safeCover = encodeURIComponent(coverFilename || path.basename(absCover));
+    coverExpectedPath = `/${token}/${safeCover}`;
+    const ext = path.extname(absCover).toLowerCase();
+    routes.set(coverExpectedPath, {
+      absPath: absCover,
+      fileSize: fs.statSync(absCover).size,
+      contentType: ext === ".png" ? "image/png" : "image/jpeg",
+    });
+  }
+
+  const server = http.createServer((req, res) => {
+    const reqPath = (req.url || "").split("?")[0];
+    const fileInfo = routes.get(reqPath);
+    if (!fileInfo || (req.method !== "GET" && req.method !== "HEAD")) {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Not Found");
+      return;
+    }
+    serveSingleFile(req, res, fileInfo);
   });
 
   await new Promise((resolve, reject) => {
@@ -90,7 +118,9 @@ export async function startLocalMediaServer({ filePath, publicFilename = null })
   return {
     port,
     expectedPath,
+    coverExpectedPath,
     localUrl: `http://127.0.0.1:${port}${expectedPath}`,
+    coverLocalUrl: coverExpectedPath ? `http://127.0.0.1:${port}${coverExpectedPath}` : null,
     close: () =>
       new Promise((resolve) => {
         server.close(() => resolve());
@@ -116,13 +146,20 @@ export async function withEphemeralCloudflareMedia(
   {
     filePath,
     publicFilename = null,
+    coverPath = null,
+    coverFilename = null,
     cloudflaredBin = "cloudflared",
     startupTimeoutMs = 25_000,
     fetchImpl = globalThis.fetch,
   },
   fn
 ) {
-  const localSrv = await startLocalMediaServer({ filePath, publicFilename });
+  const localSrv = await startLocalMediaServer({
+    filePath,
+    publicFilename,
+    coverPath,
+    coverFilename,
+  });
   let tunnelProc = null;
 
   try {
@@ -170,9 +207,10 @@ export async function withEphemeralCloudflareMedia(
       });
     });
 
-    const publicUrl = `${baseUrl}${localSrv.expectedPath}`;
-    await waitForPublicUrlReady(publicUrl, { fetchImpl });
-    return await fn(publicUrl);
+    const videoUrl = `${baseUrl}${localSrv.expectedPath}`;
+    const coverUrl = localSrv.coverExpectedPath ? `${baseUrl}${localSrv.coverExpectedPath}` : null;
+    await waitForPublicUrlReady(videoUrl, { fetchImpl });
+    return await fn({ videoUrl, coverUrl });
   } finally {
     if (tunnelProc && !tunnelProc.killed) {
       try {
