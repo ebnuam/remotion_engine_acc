@@ -35,7 +35,7 @@ export const DEFAULT_AUTOMATION_CONFIG = Object.freeze({
   enableHumanJitter: true,
   minLeadMinutes: 45,
   minElevenLabsChars: 1400,
-  agyModel: "gemini-4-hydrogen-high",
+  agyModel: "gemini-4-neon-high",
   agyTimeoutMs: 18_000_000, // 5 hours max per episode (coding + 2-3h 1080p render)
 });
 

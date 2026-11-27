@@ -247,7 +247,7 @@ export async function generateEpisodeBlueprint({
   try {
     parsed = await callModel(
       "script_master",
-      env.AI_PREMIUM_MODEL || "gemini-4-hydrogen-high"
+      env.AI_PREMIUM_MODEL || "gemini-4-neon-high"
     );
   } catch {
     parsed = null;
@@ -666,7 +666,7 @@ export async function produceNextEpisode({
     const agyArgs = [
       "--dangerously-skip-permissions",
       "--model",
-      String(cfg.agyModel || "gemini-4-hydrogen-high"),
+      String(cfg.agyModel || "gemini-4-neon-high"),
       "--output-format",
       "json",
       "--print",
