@@ -1107,10 +1107,14 @@ async function handleDashboardChat(body) {
 
   const aiRouter = createAIRouter({ env, envFile: AUTOMATION_ENV_FILE });
   const msgs = [
+    { role: "system", content: systemPrompt },
     ...history
       .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
       .map((m) => ({ role: m.role, content: m.content.slice(0, 1200) })),
-    { role: "user", content: message.slice(0, 2000) },
+    {
+      role: "user",
+      content: `[DATA LIVE VPS SAAT INI]\n${JSON.stringify(contextSummary)}\n\n[PERTANYAAN USER]\n${message.slice(0, 2000)}`,
+    },
   ];
 
   let res;
@@ -1118,17 +1122,15 @@ async function handleDashboardChat(body) {
     res = await aiRouter.chatCompletion({
       task: "post_copy",
       model: env.AI_STANDARD_MODEL || env.AGYBRIDGE_DEFAULT_MODEL || "gemini-2.5-flash",
-      systemPrompt,
       messages: msgs,
-      temperature: 0.4,
+      temperature: 0.3,
     });
   } catch {
     res = await aiRouter.chatCompletion({
       task: "creative_director",
       model: env.AI_PREMIUM_MODEL || "gemini-4-hydrogen-high",
-      systemPrompt,
       messages: msgs,
-      temperature: 0.4,
+      temperature: 0.3,
     });
   }
 
